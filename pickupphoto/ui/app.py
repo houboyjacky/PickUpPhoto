@@ -80,6 +80,9 @@ class AppState:
         self.db: Database | None = None
         self.cache: ThumbnailCache | None = None
 
+        # 核心效能設定
+        self.max_workers: int = int(self.i18n.settings.get("max_workers", 4))
+
         # AI 掃描狀態
         self.ai_scanning: bool = False
         self.ai_use_eye_focus: bool = False
@@ -91,6 +94,13 @@ class AppState:
     def t(self, key: str, *args: any) -> str:
         """語系翻譯。"""
         return self.i18n.t(key, *args)
+
+    def update_max_workers(self, count: int) -> None:
+        """更新背景快取執行緒數並儲存設定。"""
+        self.max_workers = count
+        self.i18n.settings["max_workers"] = count
+        from pickupphoto.core.settings import save_settings
+        save_settings(self.i18n.settings)
 
     @property
     def current_photo(self) -> PhotoInfo | None:
@@ -253,6 +263,18 @@ class PickUpPhotoApp:
             with dpg.menu(tag=TAG_MENU_TOOLS, label=t("tools_menu")):
                 dpg.add_menu_item(tag=TAG_MENU_ITEM_SCAN, label=t("scan_ai"), callback=self._on_ai_scan)
                 dpg.add_menu_item(tag=TAG_MENU_ITEM_EXPORT, label=t("export"), callback=self._on_export)
+                dpg.add_separator()
+                import os
+                max_cpu = os.cpu_count() or 8
+                dpg.add_slider_int(
+                    tag="menu_item_cores",
+                    label=t("cores_label"),
+                    default_value=self.state.max_workers,
+                    min_value=1,
+                    max_value=max_cpu,
+                    callback=self._on_cores_change,
+                    width=120,
+                )
 
             with dpg.menu(tag=TAG_MENU_LANG, label=t("lang_menu")):
                 dpg.add_menu_item(tag=TAG_MENU_ITEM_LANG_ZH, label="繁體中文", callback=lambda: self._on_lang_menu_select("zh-Hant"))
@@ -441,6 +463,7 @@ class PickUpPhotoApp:
             cache.start_build(
                 on_progress=self._on_cache_progress,
                 on_done=self._on_cache_done,
+                max_workers=self.state.max_workers,
             )
 
             dpg.set_value(TAG_STATUS_BAR, f"{len(photos)} files" if self.state.i18n.lang == "en" else f"{len(photos)} 張")
@@ -599,6 +622,10 @@ class PickUpPhotoApp:
         delete_cache(self.state.folder)
         self._load_folder(self.state.folder)
 
+    def _on_cores_change(self, sender, app_data: int) -> None:
+        """調整執行緒核心數。"""
+        self.state.update_max_workers(app_data)
+
     def _update_ui_text(self) -> None:
         """更新所有 UI 標籤與選單文字。"""
         t = self.state.t
@@ -617,6 +644,7 @@ class PickUpPhotoApp:
         dpg.configure_item(TAG_MENU_ITEM_SINGLE, label=t("view_single"))
         dpg.configure_item(TAG_MENU_ITEM_SCAN, label=t("scan_ai"))
         dpg.configure_item(TAG_MENU_ITEM_EXPORT, label=t("export"))
+        dpg.configure_item("menu_item_cores", label=t("cores_label"))
 
         # 更新篩選下拉清單內容
         items = self._get_filter_items()

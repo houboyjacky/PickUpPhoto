@@ -81,13 +81,15 @@ class ThumbnailCache:
         self,
         on_progress: Callable[[int, int, str], None] | None = None,
         on_done: Callable[[], None] | None = None,
+        max_workers: int = 4,
     ) -> None:
         """
-        在背景執行緒啟動快取建立流程（Progressive Loading）。
+        在背景執行緒啟動快取建立流程（Progressive Loading，支援多核心平行解析）。
 
         Args:
             on_progress: 每張完成時呼叫 (completed_count, total, filename)
             on_done: 全部完成時呼叫
+            max_workers: 最大工作執行緒數
         """
         if self._build_thread and self._build_thread.is_alive():
             return  # 已在執行中
@@ -95,7 +97,7 @@ class ThumbnailCache:
         self._stop_event.clear()
         self._build_thread = threading.Thread(
             target=self._build_worker,
-            args=(on_progress, on_done),
+            args=(on_progress, on_done, max_workers),
             daemon=True,
             name="ThumbnailCacheBuilder",
         )
@@ -113,44 +115,68 @@ class ThumbnailCache:
         self,
         on_progress: Callable[[int, int, str], None] | None,
         on_done: Callable[[], None] | None,
+        max_workers: int,
     ) -> None:
-        """背景執行緒工作：逐張提取縮圖並寫入 SQLite。"""
+        """背景執行緒工作：多執行緒平行提取縮圖並寫入 SQLite。"""
+        from concurrent.futures import ThreadPoolExecutor, as_completed
         total = len(self._photos)
         completed = 0
+        completed_lock = threading.Lock()
 
+        # 第一步：篩選出需要解碼的照片任務以優化平行調度
+        tasks = []
         for photo in self._photos:
             if self._stop_event.is_set():
                 break
-
-            # 若已有有效快取（mtime 相符），跳過
             record = self._db.load_thumbnail(photo.filename)
             if record and record["file_mtime"] == photo.mtime:
                 completed += 1
                 if on_progress:
                     on_progress(completed, total, photo.filename)
-                continue
+            else:
+                tasks.append(photo)
 
-            # 建立縮圖
+        if completed == total:
+            if on_done and not self._stop_event.is_set():
+                on_done()
+            return
+
+        def process_photo(photo: PhotoInfo) -> str:
+            if self._stop_event.is_set():
+                return photo.filename
             try:
                 result = load_thumbnail(photo.path)
                 blob = numpy_to_jpeg_bytes(result.image, quality=85)
-                with self._lock:
-                    self._db.save_thumbnail(
-                        filename=photo.filename,
-                        blob=blob,
-                        mtime=photo.mtime,
-                        width=result.width,
-                        height=result.height,
-                        has_fallback=result.is_fallback,
-                    )
-                    photo.has_thumbnail = True
+                self._db.save_thumbnail(
+                    filename=photo.filename,
+                    blob=blob,
+                    mtime=photo.mtime,
+                    width=result.width,
+                    height=result.height,
+                    has_fallback=result.is_fallback,
+                )
+                photo.has_thumbnail = True
             except Exception:
-                # 單張失敗不中斷整體流程
                 pass
+            return photo.filename
 
-            completed += 1
-            if on_progress:
-                on_progress(completed, total, photo.filename)
+        # 使用 ThreadPoolExecutor 平行解碼
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(process_photo, photo): photo for photo in tasks}
+            for future in as_completed(futures):
+                if self._stop_event.is_set():
+                    executor.shutdown(wait=False, cancel_futures=True)
+                    break
+
+                try:
+                    filename = future.result()
+                except Exception:
+                    continue
+
+                with completed_lock:
+                    completed += 1
+                if on_progress:
+                    on_progress(completed, total, filename)
 
         if on_done and not self._stop_event.is_set():
             on_done()

@@ -121,32 +121,104 @@ TRANSLATIONS = {
         "scanning_files": "Scanning folder...",
         "no_files_found": "No supported RAW files found (NEF/RAF)",
         "path_hint": "Or enter/paste folder path here...",
+        "clear_cache": "清除目前快取",
+        "file_menu": "檔案",
+        "view_menu": "檢視",
+        "tools_menu": "工具",
+        "lang_menu": "語言",
+        "cores_label": "CPU 核心數",
+    },
+    "en": {
+        "title": "PickUpPhoto - RAW Photo Browser",
+        "open_folder": "Open Folder",
+        "view_grid": "Grid View",
+        "view_single": "Single View",
+        "filter": "Filter:",
+        "scan_ai": "Scan AI",
+        "export": "Export",
+        "all": "All",
+        "stars_gte": "≥{} Star(s)",
+        "stars_eq": "={} Star(s)",
+        "exif_empty": "Please open a folder to start",
+        "warning_badge": "[!]",
+        "ai_best_badge": "[Best]",
+        "ai_best_desc": "[Best] AI Recommended Best Shot",
+        "stars_label": "Stars",
+        "no_ai": "Not analyzed yet. Click 'Scan AI'.",
+        "ai_analysis": "AI Analysis Metrics",
+        "sharpness": "Focus Sharpness",
+        "exposure": "Exposure Normalcy",
+        "motion_blur": "No Motion Blur",
+        "eye_focus": "Eye Focus",
+        "loading": "Loading...",
+        "decoding": "Decoding Full RAW...",
+        "decode_btn": "Full Decode",
+        "decode_success": "Decoded",
+        "decode_failed": "Decode Failed",
+        "burst_group": "Burst Group",
+        "burst_single": "Single Shot",
+        "burst_info": "Group {} ({} shots) - Frame {}",
+        "export_title": "Export Settings",
+        "target_folder": "Target Folder:",
+        "browse": "Browse",
+        "filter_cond": "Filter Condition:",
+        "match_count": "Matches: {} file(s)",
+        "conflict_handling": "Conflict Resolution:",
+        "conflict_rename": "Auto Rename",
+        "conflict_skip": "Skip",
+        "conflict_overwrite": "Overwrite",
+        "start_export": "Start Copying",
+        "close": "Close",
+        "exporting": "Copying files...",
+        "export_success": "Done! Copied {} files",
+        "export_skipped": ", skipped {} files",
+        "export_failed": ", {} files failed",
+        "lang_label": "Language",
+        "cache_expired": "Cache expired, rebuilding...",
+        "scanning_files": "Scanning folder...",
+        "no_files_found": "No supported RAW files found (NEF/RAF)",
+        "path_hint": "Or enter/paste folder path here...",
         "clear_cache": "Clear Current Cache",
         "file_menu": "File",
         "view_menu": "View",
         "tools_menu": "Tools",
         "lang_menu": "Language",
+        "cores_label": "CPU Cores",
     }
 }
 
 
-def load_settings() -> dict[str, str]:
-    """載入設定檔，預設使用繁體中文。"""
-    default_settings = {"lang": "zh-Hant"}
+def load_settings() -> dict[str, Any]:
+    """載入設定檔，預設使用繁體中文與最大核心數。"""
+    import os
+    default_workers = os.cpu_count() or 4
+    default_settings = {
+        "lang": "zh-Hant",
+        "max_workers": default_workers,
+    }
     if not SETTINGS_FILE.exists():
         return default_settings
 
     try:
         with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
-            if isinstance(data, dict) and data.get("lang") in TRANSLATIONS:
-                return data
+            if isinstance(data, dict):
+                lang = data.get("lang")
+                if lang in TRANSLATIONS:
+                    default_settings["lang"] = lang
+                workers = data.get("max_workers")
+                if workers is not None:
+                    try:
+                        default_settings["max_workers"] = int(workers)
+                    except ValueError:
+                        pass
+                return default_settings
     except Exception:
         pass
     return default_settings
 
 
-def save_settings(settings: dict[str, str]) -> None:
+def save_settings(settings: dict[str, Any]) -> None:
     """儲存設定檔。"""
     try:
         with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
