@@ -180,8 +180,7 @@ class PickUpPhotoApp:
         if font_path:
             with dpg.font_registry():
                 with dpg.font(font_path, 16) as default_font:
-                    dpg.add_font_range_hint(dpg.mvFontRangeHint_Default)
-                    dpg.add_font_range_hint(dpg.mvFontRangeHint_Chinese_Full)
+                    pass
                 dpg.bind_font(default_font)
 
     def _setup_theme(self) -> None:
@@ -386,53 +385,54 @@ class PickUpPhotoApp:
     def _scan_worker(self, folder: Path) -> None:
         try:
             photos = scan_folder(folder)
+
+            if not photos:
+                dpg.set_value(TAG_EXIF_BAR, self.state.t("no_files_found"))
+                return
+
+            db = Database(folder)
+            db.open()
+            db.load_ratings_from_json()
+
+            # 從 DB 恢復評分與 AI 結果
+            all_ratings = db.get_all_ratings()
+            all_ai = db.get_all_ai_scores()
+            all_burst = db.get_all_burst_groups()
+            for p in photos:
+                p.stars = all_ratings.get(p.filename, 0)
+                p.has_ai_scores = p.filename in all_ai
+                burst_info = all_burst.get(p.filename)
+                if burst_info:
+                    p.ai_best = bool(burst_info["ai_best"])
+                    p.burst_group_id = burst_info["group_id"]
+                    p.burst_group_rank = burst_info["group_rank"]
+
+            self.state.photos = photos
+            self.state.db = db
+            self.state.cache_total = len(photos)
+            self.state.cache_progress = 0
+            self.state.apply_filter()
+
+            cache = ThumbnailCache(db, photos)
+            self.state.cache = cache
+
+            # 檢查 TTL
+            if cache.check_ttl():
+                dpg.set_value(TAG_EXIF_BAR, self.state.t("cache_expired"))
+
+            # 啟動背景快取建立
+            cache.start_build(
+                on_progress=self._on_cache_progress,
+                on_done=self._on_cache_done,
+            )
+
+            dpg.set_value(TAG_STATUS_BAR, f"{len(photos)} files" if self.state.i18n.lang == "en" else f"{len(photos)} 張")
+            if self._grid_view:
+                self._grid_view.load(photos)
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             dpg.set_value(TAG_EXIF_BAR, f"Failed: {e}" if self.state.i18n.lang == "en" else f"掃描失敗：{e}")
-            return
-
-        if not photos:
-            dpg.set_value(TAG_EXIF_BAR, self.state.t("no_files_found"))
-            return
-
-        db = Database(folder)
-        db.open()
-        db.load_ratings_from_json()
-
-        # 從 DB 恢復評分與 AI 結果
-        all_ratings = db.get_all_ratings()
-        all_ai = db.get_all_ai_scores()
-        all_burst = db.get_all_burst_groups()
-        for p in photos:
-            p.stars = all_ratings.get(p.filename, 0)
-            p.has_ai_scores = p.filename in all_ai
-            burst_info = all_burst.get(p.filename)
-            if burst_info:
-                p.ai_best = bool(burst_info["ai_best"])
-                p.burst_group_id = burst_info["group_id"]
-                p.burst_group_rank = burst_info["group_rank"]
-
-        self.state.photos = photos
-        self.state.db = db
-        self.state.cache_total = len(photos)
-        self.state.cache_progress = 0
-        self.state.apply_filter()
-
-        cache = ThumbnailCache(db, photos)
-        self.state.cache = cache
-
-        # 檢查 TTL
-        if cache.check_ttl():
-            dpg.set_value(TAG_EXIF_BAR, self.state.t("cache_expired"))
-
-        # 啟動背景快取建立
-        cache.start_build(
-            on_progress=self._on_cache_progress,
-            on_done=self._on_cache_done,
-        )
-
-        dpg.set_value(TAG_STATUS_BAR, f"{len(photos)} files" if self.state.i18n.lang == "en" else f"{len(photos)} 張")
-        if self._grid_view:
-            self._grid_view.load(photos)
 
     def _on_cache_progress(self, completed: int, total: int, filename: str) -> None:
         self.state.cache_progress = completed
