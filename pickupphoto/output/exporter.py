@@ -20,6 +20,7 @@ from pickupphoto.core.scanner import PhotoInfo
 class FilterMode(Enum):
     GTE = ">="   # 大於等於
     EQ = "="     # 等於
+    LTE = "<="   # 小於等於
 
 
 class ConflictAction(Enum):
@@ -67,6 +68,8 @@ def filter_photos(
     """
     if mode == FilterMode.GTE:
         return [p for p in photos if p.stars >= stars]
+    elif mode == FilterMode.LTE:
+        return [p for p in photos if p.stars <= stars]
     else:  # EQ
         return [p for p in photos if p.stars == stars]
 

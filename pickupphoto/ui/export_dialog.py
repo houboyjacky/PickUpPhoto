@@ -86,7 +86,7 @@ def show_export_dialog(state: "AppState") -> None:
         with dpg.group(horizontal=True):
             dpg.add_combo(
                 tag=TAG_FILTER_MODE_COMBO,
-                items=["≥", "="],
+                items=["≥", "=", "≤"],
                 default_value="≥",
                 width=80,
                 callback=_update_preview,
@@ -234,7 +234,11 @@ def _export_worker(state: "AppState", photos, config: ExportConfig) -> None:
 
 def _get_filter_mode() -> FilterMode:
     val = dpg.get_value(TAG_FILTER_MODE_COMBO)
-    return FilterMode.GTE if val == "≥" else FilterMode.EQ
+    if val == "≥":
+        return FilterMode.GTE
+    elif val == "≤":
+        return FilterMode.LTE
+    return FilterMode.EQ
 
 
 def _get_filter_stars() -> int:

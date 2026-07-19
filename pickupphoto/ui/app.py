@@ -134,36 +134,27 @@ class AppState:
 
     def apply_filter(self) -> None:
         """依 filter_option 重新計算 filtered_photos。"""
-        # 取得當前語言的所有篩選文字選項
         t = self.t
-        filter_items = [
-            t("all"),
-            t("stars_gte", 1),
-            t("stars_gte", 2),
-            t("stars_gte", 3),
-            t("stars_gte", 4),
-            t("stars_eq", 5),
-            t("stars_eq", 4),
-            t("stars_eq", 3),
-            t("stars_eq", 2),
-            t("stars_eq", 1),
-        ]
-
-        try:
-            idx = filter_items.index(self.filter_option)
-        except ValueError:
-            idx = 0
-
-        if idx == 0:
+        if self.filter_option == t("all"):
             self.filtered_photos = list(self.photos)
-        elif 1 <= idx <= 4:
-            n = idx  # 1, 2, 3, 4
-            self.filtered_photos = [p for p in self.photos if p.stars >= n]
-        elif 5 <= idx <= 9:
-            n = 10 - idx  # 5, 4, 3, 2, 1
-            self.filtered_photos = [p for p in self.photos if p.stars == n]
         else:
-            self.filtered_photos = list(self.photos)
+            matched = False
+            for n in range(1, 6):
+                if self.filter_option == t("stars_gte", n):
+                    self.filtered_photos = [p for p in self.photos if p.stars >= n]
+                    matched = True
+                    break
+                if self.filter_option == t("stars_eq", n):
+                    self.filtered_photos = [p for p in self.photos if p.stars == n]
+                    matched = True
+                    break
+                if self.filter_option == t("stars_lte", n):
+                    self.filtered_photos = [p for p in self.photos if p.stars <= n]
+                    matched = True
+                    break
+            
+            if not matched:
+                self.filtered_photos = list(self.photos)
 
         # 確保索引不越界
         if self.selected_index >= len(self.filtered_photos):
@@ -728,6 +719,10 @@ class PickUpPhotoApp:
             t("stars_eq", 3),
             t("stars_eq", 2),
             t("stars_eq", 1),
+            t("stars_lte", 4),
+            t("stars_lte", 3),
+            t("stars_lte", 2),
+            t("stars_lte", 1),
         ]
 
     def _on_lang_menu_select(self, lang_code: str) -> None:

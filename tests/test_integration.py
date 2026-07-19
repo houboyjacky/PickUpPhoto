@@ -71,6 +71,12 @@ class TestFilterPhotos:
         result = filter_photos(photos, FilterMode.EQ, 3)
         assert all(p.stars == 3 for p in result)
 
+    def test_lte_filter(self):
+        photos = [make_photo(f"{i}.NEF", stars=i) for i in range(6)]
+        result = filter_photos(photos, FilterMode.LTE, 3)
+        assert all(p.stars <= 3 for p in result)
+        assert len(result) == 4  # stars 0, 1, 2, 3
+
     def test_gte_zero_returns_all(self):
         photos = [make_photo(f"{i}.NEF", stars=i) for i in range(6)]
         result = filter_photos(photos, FilterMode.GTE, 0)
