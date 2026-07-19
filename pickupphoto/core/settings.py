@@ -65,6 +65,11 @@ TRANSLATIONS = {
         "scanning_files": "正在掃描資料夾...",
         "no_files_found": "此資料夾未找到支援的 RAW 檔案（NEF / RAF）",
         "path_hint": "或在此輸入/貼上資料夾路徑...",
+        "clear_cache": "清除目前快取",
+        "file_menu": "檔案",
+        "view_menu": "檢視",
+        "tools_menu": "工具",
+        "lang_menu": "語言",
     },
     "en": {
         "title": "PickUpPhoto - RAW Photo Browser",
@@ -116,6 +121,11 @@ TRANSLATIONS = {
         "scanning_files": "Scanning folder...",
         "no_files_found": "No supported RAW files found (NEF/RAF)",
         "path_hint": "Or enter/paste folder path here...",
+        "clear_cache": "Clear Current Cache",
+        "file_menu": "File",
+        "view_menu": "View",
+        "tools_menu": "Tools",
+        "lang_menu": "Language",
     }
 }
 
