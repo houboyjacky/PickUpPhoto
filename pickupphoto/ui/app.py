@@ -369,26 +369,32 @@ class PickUpPhotoApp:
 
     def _poll_keyboard(self) -> None:
         """每 frame 輪詢鍵盤狀態，不受 DPG 焦點影響。"""
-        # 評星数字鍵 0-5
-        rating_keys = [
-            (dpg.mvKey_0, 0), (dpg.mvKey_1, 1), (dpg.mvKey_2, 2),
-            (dpg.mvKey_3, 3), (dpg.mvKey_4, 4), (dpg.mvKey_5, 5),
+        # 評星數字鍵：支援主鍵盤 0-5 以及右側數字鍵盤 (Numpad) 0-5
+        rating_mappings = [
+            (0, [dpg.mvKey_0, dpg.mvKey_NumPad0]),
+            (1, [dpg.mvKey_1, dpg.mvKey_NumPad1]),
+            (2, [dpg.mvKey_2, dpg.mvKey_NumPad2]),
+            (3, [dpg.mvKey_3, dpg.mvKey_NumPad3]),
+            (4, [dpg.mvKey_4, dpg.mvKey_NumPad4]),
+            (5, [dpg.mvKey_5, dpg.mvKey_NumPad5]),
         ]
         current_pressed: set[int] = set()
-        for key, stars in rating_keys:
-            if dpg.is_key_down(key):
-                current_pressed.add(key)
-                if key not in self._prev_keys:
-                    # 新按下（不是長按重複）
-                    photo = self.state.current_photo
-                    if photo and self.state.db:
-                        photo.stars = stars
-                        self.state.db.set_rating(photo.filename, stars)
-                        self._update_exif_bar()
-                        if self._grid_view:
-                            self._grid_view.refresh_badges(photo.filename)
-                        if self._analysis_panel:
-                            self._analysis_panel.refresh()
+
+        for stars, keys in rating_mappings:
+            for key in keys:
+                if dpg.is_key_down(key):
+                    current_pressed.add(key)
+                    if key not in self._prev_keys:
+                        # 新按下（不是長按重複）
+                        photo = self.state.current_photo
+                        if photo and self.state.db:
+                            photo.stars = stars
+                            self.state.db.set_rating(photo.filename, stars)
+                            self._update_exif_bar()
+                            if self._grid_view:
+                                self._grid_view.refresh_badges(photo.filename)
+                            if self._analysis_panel:
+                                self._analysis_panel.refresh()
 
         # 左右方向鍵（單張模式切換）
         for key in (dpg.mvKey_Left, dpg.mvKey_Right):
