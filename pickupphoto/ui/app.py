@@ -188,8 +188,9 @@ class PickUpPhotoApp:
         self._build_ui()
         self._register_keyboard_handler()
 
+        from pickupphoto import __version__
         dpg.create_viewport(
-            title="PickUpPhoto",
+            title=f"PickUpPhoto v{__version__}",
             width=1400,
             height=900,
             min_width=900,

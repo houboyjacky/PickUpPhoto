@@ -7,11 +7,13 @@
 
 set -e
 
+# 讀取版本號
+VERSION=$(python3 -c "import sys; sys.path.insert(0, '.'); from pickupphoto import __version__; print(__version__)")
 APP_NAME="PickUpPhoto"
-DMG_NAME="PickUpPhoto_AppleSilicon.dmg"
+DMG_NAME="PickUpPhoto_v${VERSION}_AppleSilicon.dmg"
 
 echo "=== 1. 清理舊的編譯快取與暫存資料 ==="
-rm -rf build dist *.spec "$DMG_NAME"
+rm -rf build dist *.spec "PickUpPhoto_"*.dmg
 find . -name "*.pyc" -delete
 find . -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
 
@@ -19,11 +21,13 @@ echo "=== 2. 啟動 PyInstaller 封裝 .app ==="
 # --noconsole: 不顯示終端機視窗
 # --name: 指定產出 App 名稱
 # --clean: 每次編譯清除 PyInstaller 快取
+# --icon: 指定 App 圖標
 # --collect-all: 收集相關第三方函式庫的 binary/data (防止 mediapipe 或 rawpy 遺失依賴)
 .venv/bin/pyinstaller \
     --noconsole \
     --clean \
     --name="$APP_NAME" \
+    --icon="app_icon.icns" \
     --collect-all rawpy \
     --collect-all mediapipe \
     pickupphoto/__main__.py
