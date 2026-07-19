@@ -416,6 +416,8 @@ class PickUpPhotoApp:
             self._grid_view.on_resize()
         if self._single_view:
             self._single_view.on_resize()
+        if self._analysis_panel:
+            self._analysis_panel.on_resize()
 
     # ─── 事件回呼 ────────────────────────────────────────────
 

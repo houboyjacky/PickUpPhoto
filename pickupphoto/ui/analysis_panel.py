@@ -107,6 +107,16 @@ class AnalysisPanel:
 
         self._built = True
 
+    def on_resize(self) -> None:
+        """視窗縮放時重新計算面板位置與高度，使其保持貼右對齊。"""
+        if not self._built or not dpg.does_item_exist(TAG_PANEL_WINDOW):
+            return
+        vp_w = dpg.get_viewport_client_width()
+        vp_h = dpg.get_viewport_client_height()
+        new_x = vp_w - 290
+        new_h = vp_h - 50
+        dpg.configure_item(TAG_PANEL_WINDOW, pos=(new_x, 42), height=new_h)
+
     def refresh(self) -> None:
         """更新面板顯示，依當前照片狀態填入資料。"""
         if not self._built:
