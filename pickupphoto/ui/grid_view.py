@@ -59,6 +59,7 @@ class GridView:
         self._tag_window = "grid_scroll_window"
         self._tag_draw = "grid_draw_area"
         self._is_visible = False
+        self._last_scroll_y: float = -1.0
 
     def load(self, photos: list[PhotoInfo]) -> None:
         """載入（或更新）照片清單，重建格狀視圖。"""
@@ -111,17 +112,21 @@ class GridView:
                 pass  # 實際繪製由 _draw_visible 完成
 
         # 繪製可見範圍
-        self._draw_visible()
+        self._draw_visible(force=True)
         self._is_visible = True
 
-    def _draw_visible(self) -> None:
-        """僅繪製可視範圍內的縮圖（虛擬捲動核心）。"""
+    def _draw_visible(self, force: bool = False) -> None:
+        """僅繪製可視範圍內的縮圖（虛擬捲動核心，優化防抖）。"""
         if not dpg.does_item_exist(self._tag_draw):
             return
 
+        scroll_y = dpg.get_y_scroll(self._tag_window) if dpg.does_item_exist(self._tag_window) else 0
+        if not force and abs(scroll_y - self._last_scroll_y) < 1.0:
+            return
+        self._last_scroll_y = scroll_y
+
         dpg.delete_item(self._tag_draw, children_only=True)
 
-        scroll_y = dpg.get_y_scroll(self._tag_window) if dpg.does_item_exist(self._tag_window) else 0
         vp_h = dpg.get_viewport_client_height()
 
         row_h = CELL_H + CELL_PAD
@@ -317,16 +322,16 @@ class GridView:
         first, last = self._visible_range
         idx = next((i for i, p in enumerate(self._photos) if p.filename == filename), -1)
         if first <= idx < last:
-            self._draw_visible()
+            self._draw_visible(force=True)
 
     def refresh_badges(self, filename: str) -> None:
         """評分或 AI 狀態變更時，重繪相關格子。"""
-        self._draw_visible()
+        self._draw_visible(force=True)
 
     def refresh_all(self) -> None:
         """全部重繪。"""
         self._assign_group_colors()
-        self._draw_visible()
+        self._draw_visible(force=True)
 
     def on_resize(self) -> None:
         """當視區大小改變時呼叫，自動調整行數並重建格狀結構。"""
@@ -377,7 +382,7 @@ class GridView:
                 app.navigate_to(idx)
         else:
             # 重繪（高亮更新）
-            self._draw_visible()
+            self._draw_visible(force=True)
 
     def _find_app(self):
         """取得 app 實例（循環引用迴避）。"""

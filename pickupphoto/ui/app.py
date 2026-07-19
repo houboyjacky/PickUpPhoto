@@ -179,7 +179,11 @@ class PickUpPhotoApp:
         dpg.show_viewport()
         dpg.set_primary_window(TAG_MAIN_WINDOW, True)
 
-        dpg.start_dearpygui()
+        # 改用自訂主迴圈，以支援虛擬滾動 (Virtual Scroll) 捲動時的即時重新整理
+        while dpg.is_dearpygui_running():
+            if self._grid_view and self._grid_view._is_visible:
+                self._grid_view._draw_visible()
+            dpg.render_dearpygui_frame()
 
         # 關閉時處理快取對話
         self._on_close()
