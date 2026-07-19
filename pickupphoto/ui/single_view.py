@@ -10,6 +10,7 @@ ui/single_view.py — 單張預覽模式
 
 from __future__ import annotations
 
+import threading
 from typing import TYPE_CHECKING
 
 import dearpygui.dearpygui as dpg
@@ -37,8 +38,10 @@ class SingleView:
         self._current_texture: int | None = None
         self._current_filename: str | None = None
         self._full_decode_texture: int | None = None
+        self._current_arr: "np.ndarray | None" = None  # 原始圖陣列，供 resize 重繪
         self._is_full_decoded: bool = False
         self._is_visible = False
+        self._resize_timer: threading.Timer | None = None  # 防抖計時器
 
     def show(self) -> None:
         """顯示單張視圖。"""
@@ -107,14 +110,16 @@ class SingleView:
 
     def _update_main_texture(self, arr: np.ndarray) -> None:
         """上傳 numpy array 至 GPU texture 並更新畫面。"""
-        vp_w = dpg.get_viewport_client_width() - 300  # 留右側面板
+        self._current_arr = arr  # 快取原始陣列供 resize 使用
+
+        vp_w = dpg.get_viewport_client_width() - 310  # 留右側面板
         vp_h = dpg.get_viewport_client_height() - 120
 
         # 計算等比縮放
         h, w = arr.shape[:2]
-        scale = min(vp_w / w, vp_h / h, 1.0)
-        new_w = int(w * scale)
-        new_h = int(h * scale)
+        scale = min(vp_w / max(w, 1), vp_h / max(h, 1))
+        new_w = max(1, int(w * scale))
+        new_h = max(1, int(h * scale))
 
         img = Image.fromarray(arr).resize((new_w, new_h), Image.LANCZOS)
         rgba = np.array(img.convert("RGBA"), dtype=np.float32) / 255.0
@@ -129,8 +134,9 @@ class SingleView:
             parent="global_texture_registry",
         )
 
-        # 更新繪圖區
+        # 同步調整 drawlist 大小
         if dpg.does_item_exist(TAG_SINGLE_DRAW):
+            dpg.configure_item(TAG_SINGLE_DRAW, width=vp_w, height=vp_h)
             dpg.delete_item(TAG_SINGLE_DRAW, children_only=True)
             # 置中顯示
             x_off = max(0, (vp_w - new_w) // 2)
@@ -141,6 +147,19 @@ class SingleView:
                 (x_off + new_w, y_off + new_h),
                 parent=TAG_SINGLE_DRAW,
             )
+
+    def on_resize(self) -> None:
+        """視窗縮放時防抖重繪目前照片（150ms 後才觸發）。"""
+        if not self._is_visible or self._current_arr is None:
+            return
+        # 取消前一個尚未觸發的計時器
+        if self._resize_timer is not None:
+            self._resize_timer.cancel()
+        self._resize_timer = threading.Timer(
+            0.15, lambda: self._update_main_texture(self._current_arr)
+        )
+        self._resize_timer.daemon = True
+        self._resize_timer.start()
 
     def on_full_decode(self) -> None:
         """完整解碼按鈕回呼。"""

@@ -410,6 +410,8 @@ class PickUpPhotoApp:
         """當視區大小改變時呼叫。"""
         if self._grid_view:
             self._grid_view.on_resize()
+        if self._single_view:
+            self._single_view.on_resize()
 
     # ─── 事件回呼 ────────────────────────────────────────────
 
