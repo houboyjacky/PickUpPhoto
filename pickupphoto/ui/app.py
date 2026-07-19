@@ -92,6 +92,7 @@ class AppState:
         # 快取進度
         self.cache_progress: int = 0
         self.cache_total: int = 0
+        self.large_font: Any | None = None
 
     def t(self, key: str, *args: any) -> str:
         """語系翻譯。"""
@@ -233,7 +234,12 @@ class PickUpPhotoApp:
             with dpg.font_registry():
                 with dpg.font(font_path, 16) as default_font:
                     pass
+                with dpg.font(font_path, 26) as large_font:
+                    pass
                 dpg.bind_font(default_font)
+                self.state.large_font = large_font
+        else:
+            self.state.large_font = None
 
     def _setup_theme(self) -> None:
         """設定深色主題。"""

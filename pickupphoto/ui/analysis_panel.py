@@ -94,7 +94,12 @@ class AnalysisPanel:
 
             # 星等
             dpg.add_text(t("stars_label"), tag=TAG_LABEL_STARS, color=(160, 175, 210, 255))
-            dpg.add_text(tag=TAG_PANEL_STARS, default_value="☆☆☆☆☆", color=(255, 200, 50, 255))
+            dpg.add_text(tag=TAG_PANEL_STARS, default_value="☆ ☆ ☆ ☆ ☆", color=(255, 200, 50, 255))
+            # 取得 app 實作的 large_font 並綁定
+            app = self._state
+            large_font = getattr(app, "large_font", None)
+            if large_font and dpg.does_item_exist(TAG_PANEL_STARS):
+                dpg.bind_item_font(TAG_PANEL_STARS, large_font)
             dpg.add_spacer(height=4)
 
             # 未分析提示
@@ -198,7 +203,8 @@ class AnalysisPanel:
         dpg.configure_item(TAG_NO_AI_TEXT, default_value=t("no_ai"))
 
         # 星等
-        stars_str = "★" * photo.stars + "☆" * (5 - photo.stars)
+        stars_list = ["★"] * photo.stars + ["☆"] * (5 - photo.stars)
+        stars_str = " ".join(stars_list)
         dpg.set_value(TAG_PANEL_STARS, stars_str)
 
     def _clear(self) -> None:
@@ -208,5 +214,5 @@ class AnalysisPanel:
             dpg.configure_item(tag, overlay="—")
         dpg.set_value(TAG_BURST_INFO, "")
         dpg.set_value(TAG_AI_BEST_TEXT, "")
-        dpg.set_value(TAG_PANEL_STARS, "☆☆☆☆☆")
+        dpg.set_value(TAG_PANEL_STARS, "☆ ☆ ☆ ☆ ☆")
         dpg.configure_item(TAG_NO_AI_TEXT, show=True)

@@ -227,10 +227,10 @@ class GridView:
         if photo.stars > 0:
             star_str = "★" * photo.stars
             dpg.draw_text(
-                (x0 + 4, y1 - 20),
+                (x0 + 6, y1 - 25),
                 star_str,
-                color=(255, 200, 50, 230),
-                size=13,
+                color=(255, 200, 50, 255),
+                size=18,
                 parent=draw_parent,
             )
 
