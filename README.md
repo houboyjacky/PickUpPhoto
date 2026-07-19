@@ -6,37 +6,37 @@
 
 ---
 
-## 功能特色
+## 💻 運行環境與發行說明
 
-- 📂 **快速瀏覽**：以 embedded JPEG preview 快速載入，首次開啟後快取至本地 SQLite
-- ⭐ **鍵盤評星**：數字鍵 `0–5` 快速評分，`←` `→` 切換照片
-- 🤖 **AI 分析**（手動觸發）：
-  - 對焦清晰度（Laplacian variance）
-  - 曝光問題（直方圖分析）
-  - 運動模糊偵測
-  - 連拍群組自動分組（≤3 秒閾值），選出群組最佳幀（🏆）
-  - 眼睛對焦分析（可選，需 `mediapipe`，Mac Metal 加速）
-- 📤 **輸出**：按星等條件（`≥N` 或 `=N`）複製原始 RAW 檔案，不做格式轉換
+* **開發與編譯環境**：本應用程式由作者於 **MacStudio M1 Max (Apple Silicon, macOS)** 系統上開發、編譯並通過完整測試。
+* **安全性警告與開源分發**（解決方案 1）：
+  由於本專案屬於開源分享，輸出的 DMG 安裝檔**未向 Apple 註冊付費開發者證書進行簽章與公證**。其他 Mac 使用者在首次雙擊開啟時，系統可能會彈出「無法驗證開發者」的安全性警告。請依照以下步驟強制開啟：
+  1. 在 `PickUpPhoto` 的應用程式圖示上點擊右鍵（或按住 Control 鍵點擊），然後選擇 **「打開」**。
+  2. 或者前往 macOS 的 **「系統設定」** -> **「隱私權與安全性」**，滑動到最下方，點擊 **「強制允許開啟」**（Open Anyway）。
 
 ---
 
-## 安裝
+## 📦 安裝與下載
 
-### 需求
+### 方式一：下載 DMG 安裝檔（推薦 macOS 一般用戶）
+1. 前往本專案的 [Releases](https://github.com/your-username/pickupphoto/releases) 頁面。
+2. 下載最新編譯的 `PickUpPhoto_AppleSilicon.dmg` 安裝包。
+3. 雙擊打開 `.dmg`，將 `PickUpPhoto` 圖示拖曳到 **Applications (應用程式)** 資料夾即可。
 
-- **Python 3.14**（推薦；利用 free-threaded 模式加速背景載入）
-- 備案：**Python 3.12+**（所有功能相同）
-- macOS（開發環境；架構上不排除跨平台）
+### 方式二：開發者自行建置與執行 (Source Code)
 
-### 步驟
+#### 系統需求
+* **Python 3.10+**（推薦 Python 3.12+，或利用 Python 3.14 free-threaded 模式加速背景載入）
+* macOS（開發環境；架構上不排除跨平台）
 
+#### 本機啟動步驟
 ```bash
 # 1. Clone 專案
 git clone https://github.com/your-username/pickupphoto.git
 cd pickupphoto
 
 # 2. 建立虛擬環境
-python3.14 -m venv .venv      # 或 python3.12 -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 
 # 3. 安裝依賴
@@ -51,18 +51,30 @@ python -m pickupphoto
 
 ---
 
-## 鍵盤快捷鍵
+## 🛠️ 打包編譯自己專屬的 DMG
+
+如果您希望在本機修改程式碼後自行打包成獨立的 App 與 DMG，本專案提供了一鍵打包腳本（會自動清理 `build/`, `dist/`, `__pycache__` 等暫存編譯快取）：
+
+```bash
+# 賦予執行權限並執行
+chmod +x build_dmg.sh
+./build_dmg.sh
+```
+
+---
+
+## ⌨️ 鍵盤快捷鍵
 
 | 按鍵 | 功能 |
 |------|------|
-| `0` – `5` | 設定星等（0 = 清除，1–5 = 對應星數） |
+| `0` – `5` | 設定星等（0 = 清除，1–5 = 對應星數，支援主鍵盤與右側數字鍵盤） |
 | `←` | 上一張照片（單張模式） |
 | `→` | 下一張照片（單張模式） |
 | `雙擊縮圖` | 進入單張預覽模式 |
 
 ---
 
-## 資料存放
+## 📂 資料存放設計
 
 每個被瀏覽的資料夾旁會建立 `.pickupphoto/` 隱藏資料夾：
 
@@ -79,18 +91,6 @@ python -m pickupphoto
 
 ---
 
-## 開發
+## 📄 授權條款
 
-```bash
-# 安裝開發依賴
-pip install -e ".[dev]"
-
-# 執行測試
-pytest
-```
-
----
-
-## 授權
-
-MIT License
+本專案採用 **MIT License** 授權。詳見 [LICENSE](LICENSE) 檔案。
