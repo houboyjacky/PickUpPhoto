@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pickupphoto"
+version = "0.1.0"
+description = "輕量 RAW 照片瀏覽、評分與輸出工具（NEF / RAF）"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+
+dependencies = [
+    "dearpygui>=1.11",
+    "rawpy>=0.19",
+    "Pillow>=10.0",
+    "numpy>=1.26",
+    "opencv-python>=4.9",
+    "imagehash>=4.3",
+    "piexif>=1.1",
+]
+
+[project.optional-dependencies]
+face = [
+    "mediapipe>=0.10",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-mock>=3.12",
+]
+
+[project.scripts]
+pickupphoto = "pickupphoto.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pickupphoto*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]

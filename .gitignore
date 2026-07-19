@@ -1,0 +1,50 @@
+# codebase-memory-mcp per-machine index
+.codebase-memory/
+
+# Project Harness runtime evidence (local, sanitized, bounded)
+.project-harness/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+*.egg
+
+# PickUpPhoto sidecar cache（可重建，不版控）
+.pickupphoto/
+
+# IDE
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# pytest
+.pytest_cache/
+htmlcov/
+.coverage
+
+# 環境變數
+.env
+.env.local
+
+# Tooling skills and OpenSpec records
+.agent/
+.agents/
+.claude/
+.codex/
+.gemini/
+.github/
+openspec/
+.harness/
+.continuity/
+AGENTS.md
+.mcp.json
+.vscode/mcp.json
+
