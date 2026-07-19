@@ -236,10 +236,9 @@ class PickUpPhotoApp:
         from pickupphoto.ui.single_view import SingleView
         from pickupphoto.ui.analysis_panel import AnalysisPanel
 
-        self._build_menu_bar()
-
         with dpg.window(tag=TAG_MAIN_WINDOW, no_title_bar=True, no_move=True,
                         no_resize=True, no_scrollbar=True):
+            self._build_menu_bar()
             self._build_toolbar()
             self._build_content_area()
             self._build_status_bar()
@@ -251,7 +250,7 @@ class PickUpPhotoApp:
     def _build_menu_bar(self) -> None:
         """頂部選單列。"""
         t = self.state.t
-        with dpg.viewport_menu_bar(tag=TAG_MENU_BAR):
+        with dpg.menu_bar(tag=TAG_MENU_BAR):
             with dpg.menu(tag=TAG_MENU_FILE, label=t("file_menu")):
                 dpg.add_menu_item(tag=TAG_MENU_ITEM_OPEN, label=t("open_folder"), callback=self._on_open_folder)
                 dpg.add_menu_item(tag=TAG_MENU_ITEM_CLEAR, label=t("clear_cache"), callback=self._on_clear_cache)
