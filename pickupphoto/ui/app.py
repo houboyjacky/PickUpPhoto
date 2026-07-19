@@ -203,6 +203,8 @@ class PickUpPhotoApp:
         while dpg.is_dearpygui_running():
             if self._grid_view and self._grid_view._is_visible:
                 self._grid_view._draw_visible()
+            # 每 frame 輪詢鍵盤（比 handler_registry 更可靠，不受 DPG 焦點影響）
+            self._poll_keyboard()
             dpg.render_dearpygui_frame()
 
         # 關閉時處理快取對話
@@ -357,22 +359,48 @@ class PickUpPhotoApp:
     # ─── 鍵盤 Handler ────────────────────────────────────────
 
     def _register_keyboard_handler(self) -> None:
-        """註冊全域鍵盤與滑鼠事件。"""
+        """註冊全域滑鼠事件（鍵盤改用主迴圈輪詢）。"""
         with dpg.handler_registry():
-            dpg.add_key_press_handler(key=dpg.mvKey_Left, callback=self._on_key_left)
-            dpg.add_key_press_handler(key=dpg.mvKey_Right, callback=self._on_key_right)
-            # 數字鍵 0-5
-            for key, stars in [
-                (dpg.mvKey_0, 0), (dpg.mvKey_1, 1), (dpg.mvKey_2, 2),
-                (dpg.mvKey_3, 3), (dpg.mvKey_4, 4), (dpg.mvKey_5, 5),
-            ]:
-                dpg.add_key_press_handler(
-                    key=key,
-                    callback=self._on_rate,
-                    user_data=stars,
-                )
             # 滑鼠左鍵點擊（格狀視圖選取 / 雙擊進入單張模式）
             dpg.add_mouse_click_handler(button=0, callback=self._on_grid_click)
+
+    # 記錄上一幀已按下的鍵，防止 is_key_pressed 重複觸發
+    _prev_keys: set[int] = set()
+
+    def _poll_keyboard(self) -> None:
+        """每 frame 輪詢鍵盤狀態，不受 DPG 焦點影響。"""
+        # 評星数字鍵 0-5
+        rating_keys = [
+            (dpg.mvKey_0, 0), (dpg.mvKey_1, 1), (dpg.mvKey_2, 2),
+            (dpg.mvKey_3, 3), (dpg.mvKey_4, 4), (dpg.mvKey_5, 5),
+        ]
+        current_pressed: set[int] = set()
+        for key, stars in rating_keys:
+            if dpg.is_key_down(key):
+                current_pressed.add(key)
+                if key not in self._prev_keys:
+                    # 新按下（不是長按重複）
+                    photo = self.state.current_photo
+                    if photo and self.state.db:
+                        photo.stars = stars
+                        self.state.db.set_rating(photo.filename, stars)
+                        self._update_exif_bar()
+                        if self._grid_view:
+                            self._grid_view.refresh_badges(photo.filename)
+                        if self._analysis_panel:
+                            self._analysis_panel.refresh()
+
+        # 左右方向鍵（單張模式切換）
+        for key in (dpg.mvKey_Left, dpg.mvKey_Right):
+            if dpg.is_key_down(key):
+                current_pressed.add(key)
+                if key not in self._prev_keys:
+                    if key == dpg.mvKey_Left:
+                        self._on_key_left()
+                    else:
+                        self._on_key_right()
+
+        self._prev_keys = current_pressed
 
     def _on_grid_click(self) -> None:
         """處理格狀視圖的滑鼠點擊。"""
@@ -395,7 +423,7 @@ class PickUpPhotoApp:
                 self._refresh_single_view()
 
     def _on_rate(self, sender, app_data, user_data) -> None:
-        """數字鍵評星。"""
+        """評星（輪詢模式下不再使用，保留以相容）。"""
         stars = user_data
         if stars is None:
             return
