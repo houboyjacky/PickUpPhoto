@@ -110,6 +110,7 @@ class PickUpPhotoApp:
     def run(self) -> None:
         """啟動 Dear PyGui 主迴圈。"""
         dpg.create_context()
+        self._setup_font()
         self._setup_theme()
         self._build_ui()
         self._register_keyboard_handler()
@@ -131,7 +132,30 @@ class PickUpPhotoApp:
         self._on_close()
         dpg.destroy_context()
 
-    # ─── 主題設定 ─────────────────────────────────────────────
+    # ─── 主題與字型設定 ────────────────────────────────────────
+
+    def _setup_font(self) -> None:
+        """載入系統中文字型，防止中文顯示為問號。"""
+        import os
+        font_paths = [
+            "/System/Library/Fonts/PingFang.ttc",
+            "/System/Library/Fonts/STHeiti Light.ttc",
+            "/System/Library/Fonts/STHeiti Medium.ttc",
+            "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+            "/Library/Fonts/Arial Unicode.ttf",
+        ]
+        font_path = None
+        for path in font_paths:
+            if os.path.exists(path):
+                font_path = path
+                break
+
+        if font_path:
+            with dpg.font_registry():
+                with dpg.font(font_path, 16) as default_font:
+                    dpg.add_font_range_hint(dpg.mvFontRangeHint_Default)
+                    dpg.add_font_range_hint(dpg.mvFontRangeHint_Chinese_Full)
+                dpg.bind_font(default_font)
 
     def _setup_theme(self) -> None:
         """設定深色主題。"""
