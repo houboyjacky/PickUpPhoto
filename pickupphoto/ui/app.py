@@ -52,6 +52,7 @@ TAG_MENU_ITEM_SCAN = "menu_item_scan"
 TAG_MENU_ITEM_EXPORT = "menu_item_export"
 TAG_MENU_ITEM_LANG_ZH = "menu_item_lang_zh"
 TAG_MENU_ITEM_LANG_EN = "menu_item_lang_en"
+TAG_MENU_RECENT = "menu_recent"
 
 # 視圖模式
 VIEW_GRID = "grid"
@@ -80,8 +81,9 @@ class AppState:
         self.db: Database | None = None
         self.cache: ThumbnailCache | None = None
 
-        # 核心效能設定
+        # 核心效能與歷史設定
         self.max_workers: int = int(self.i18n.settings.get("max_workers", 4))
+        self.recent_folders: list[str] = list(self.i18n.settings.get("recent_folders", []))
 
         # AI 掃描狀態
         self.ai_scanning: bool = False
@@ -99,6 +101,24 @@ class AppState:
         """更新背景快取執行緒數並儲存設定。"""
         self.max_workers = count
         self.i18n.settings["max_workers"] = count
+        from pickupphoto.core.settings import save_settings
+        save_settings(self.i18n.settings)
+
+    def add_recent_folder(self, folder: Path) -> None:
+        """記錄最近開啟的資料夾路徑。"""
+        path_str = str(folder)
+        if path_str in self.recent_folders:
+            self.recent_folders.remove(path_str)
+        self.recent_folders.insert(0, path_str)
+        self.recent_folders = self.recent_folders[:10]  # 限制最多記錄 10 個
+        self.i18n.settings["recent_folders"] = self.recent_folders
+        from pickupphoto.core.settings import save_settings
+        save_settings(self.i18n.settings)
+
+    def clear_recent_history(self) -> None:
+        """清除歷史路徑。"""
+        self.recent_folders = []
+        self.i18n.settings["recent_folders"] = []
         from pickupphoto.core.settings import save_settings
         save_settings(self.i18n.settings)
 
@@ -251,6 +271,7 @@ class PickUpPhotoApp:
         self._grid_view = GridView(self.state)
         self._single_view = SingleView(self.state)
         self._analysis_panel = AnalysisPanel(self.state)
+        self._update_recent_menu()
 
     def _build_menu_bar(self) -> None:
         """頂部選單列。"""
@@ -258,6 +279,8 @@ class PickUpPhotoApp:
         with dpg.menu_bar(tag=TAG_MENU_BAR):
             with dpg.menu(tag=TAG_MENU_FILE, label=t("file_menu")):
                 dpg.add_menu_item(tag=TAG_MENU_ITEM_OPEN, label=t("open_folder"), callback=self._on_open_folder)
+                with dpg.menu(tag=TAG_MENU_RECENT, label=t("recent_folders")):
+                    pass
                 dpg.add_menu_item(tag=TAG_MENU_ITEM_CLEAR, label=t("clear_cache"), callback=self._on_clear_cache)
 
             with dpg.menu(tag=TAG_MENU_VIEW, label=t("view_menu")):
@@ -424,6 +447,10 @@ class PickUpPhotoApp:
         self.state.filtered_photos = []
         self.state.selected_index = -1
         self.state.preview_index = 0
+
+        # 紀錄與更新歷史選單
+        self.state.add_recent_folder(folder)
+        self._update_recent_menu()
 
         dpg.set_value(TAG_EXIF_BAR, f"{self.state.t('scanning_files')} {folder.name}...")
 
@@ -677,6 +704,49 @@ class PickUpPhotoApp:
         dpg.configure_item(TAG_MENU_ITEM_SCAN, label=t("scan_ai"))
         dpg.configure_item(TAG_MENU_ITEM_EXPORT, label=t("export"))
         dpg.configure_item("menu_item_cores", label=t("cores_label"))
+        dpg.configure_item(TAG_MENU_RECENT, label=t("recent_folders"))
+        self._update_recent_menu()
+
+    def _update_recent_menu(self) -> None:
+        """動態更新最近開啟資料夾選單的項目。"""
+        if not dpg.does_item_exist(TAG_MENU_RECENT):
+            return
+        dpg.delete_item(TAG_MENU_RECENT, children_only=True)
+
+        recent = self.state.recent_folders
+        if not recent:
+            label = "無歷史紀錄" if self.state.i18n.lang == "zh-Hant" else "No recent folders"
+            dpg.add_menu_item(label=label, parent=TAG_MENU_RECENT, enabled=False)
+            return
+
+        for path_str in recent:
+            dpg.add_menu_item(
+                label=path_str,
+                parent=TAG_MENU_RECENT,
+                callback=lambda _, __, p=path_str: self._on_recent_folder_click(p),
+            )
+        dpg.add_separator(parent=TAG_MENU_RECENT)
+        label_clear = "清除歷史紀錄" if self.state.i18n.lang == "zh-Hant" else "Clear History"
+        dpg.add_menu_item(
+            label=label_clear,
+            parent=TAG_MENU_RECENT,
+            callback=self._on_clear_recent_history,
+        )
+
+    def _on_recent_folder_click(self, path_str: str) -> None:
+        """選取歷史路徑時的回呼。"""
+        folder = Path(path_str)
+        if folder.is_dir():
+            dpg.set_value(TAG_PATH_INPUT, path_str)
+            self._load_folder(folder)
+        else:
+            msg = "歷史路徑已不存在" if self.state.i18n.lang == "zh-Hant" else "Recent path no longer exists"
+            dpg.set_value(TAG_EXIF_BAR, msg)
+
+    def _on_clear_recent_history(self) -> None:
+        """清除最近開啟紀錄。"""
+        self.state.clear_recent_history()
+        self._update_recent_menu()
 
         # 更新篩選下拉清單內容
         items = self._get_filter_items()
