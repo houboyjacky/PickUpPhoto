@@ -76,6 +76,12 @@ TRANSLATIONS = {
         "recaching": "重新快取中...",
         "recache_done": "快取已更新",
         "recache_failed": "重新快取失敗",
+        "help_menu": "說明",
+        "about_menu": "關於 PickUpPhoto",
+        "about_title": "關於 PickUpPhoto",
+        "author": "作者",
+        "visit_github": "前往專案 GitHub",
+        "visit_website": "前往個人網站",
     },
     "en": {
         "title": "PickUpPhoto - RAW Photo Browser",
@@ -138,6 +144,12 @@ TRANSLATIONS = {
         "recaching": "Re-caching...",
         "recache_done": "Cache updated",
         "recache_failed": "Re-cache failed",
+        "help_menu": "Help",
+        "about_menu": "About PickUpPhoto",
+        "about_title": "About PickUpPhoto",
+        "author": "Author",
+        "visit_github": "Visit Project GitHub",
+        "visit_website": "Visit Personal Website",
     }
 }
 

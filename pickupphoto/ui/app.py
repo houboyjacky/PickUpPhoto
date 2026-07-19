@@ -53,6 +53,8 @@ TAG_MENU_ITEM_EXPORT = "menu_item_export"
 TAG_MENU_ITEM_LANG_ZH = "menu_item_lang_zh"
 TAG_MENU_ITEM_LANG_EN = "menu_item_lang_en"
 TAG_MENU_RECENT = "menu_recent"
+TAG_MENU_HELP = "menu_help"
+TAG_ABOUT_POPUP = "about_popup"
 
 # 視圖模式
 VIEW_GRID = "grid"
@@ -315,6 +317,9 @@ class PickUpPhotoApp:
             with dpg.menu(tag=TAG_MENU_LANG, label=t("lang_menu")):
                 dpg.add_menu_item(tag=TAG_MENU_ITEM_LANG_ZH, label="繁體中文", callback=lambda: self._on_lang_menu_select("zh-Hant"))
                 dpg.add_menu_item(tag=TAG_MENU_ITEM_LANG_EN, label="English", callback=lambda: self._on_lang_menu_select("en"))
+
+            with dpg.menu(tag=TAG_MENU_HELP, label=t("help_menu")):
+                dpg.add_menu_item(tag="menu_item_about", label=t("about_menu"), callback=self._on_show_about)
 
     def _build_toolbar(self) -> None:
         """頂部工具列。"""
@@ -745,6 +750,59 @@ class PickUpPhotoApp:
         """調整執行緒核心數。"""
         self.state.update_max_workers(app_data)
 
+    def _on_show_about(self) -> None:
+        """顯示關於視窗。"""
+        import webbrowser
+        from pickupphoto import __version__
+        t = self.state.t
+
+        if dpg.does_item_exist(TAG_ABOUT_POPUP):
+            dpg.delete_item(TAG_ABOUT_POPUP)
+
+        vp_w = dpg.get_viewport_client_width()
+        vp_h = dpg.get_viewport_client_height()
+        w_width, w_height = 420, 260
+        pos_x = max(100, (vp_w - w_width) // 2)
+        pos_y = max(100, (vp_h - w_height) // 2)
+
+        with dpg.window(
+            tag=TAG_ABOUT_POPUP,
+            label=t("about_title"),
+            width=w_width,
+            height=w_height,
+            pos=(pos_x, pos_y),
+            no_resize=True,
+            no_collapse=True,
+            modal=True,
+        ):
+            dpg.add_text("PickUpPhoto", color=(180, 200, 255, 255))
+            dpg.add_text(f"Version {__version__}")
+            dpg.add_separator()
+            dpg.add_spacer(height=4)
+
+            dpg.add_text(f"{t('author')}: houboyjacky (Jacky Hou)")
+            dpg.add_spacer(height=6)
+
+            dpg.add_button(
+                label=t("visit_github"),
+                callback=lambda: webbrowser.open("https://github.com/houboyjacky/PickUpPhoto"),
+                width=-1,
+            )
+            dpg.add_button(
+                label=t("visit_website"),
+                callback=lambda: webbrowser.open("https://jackyhou.idv.tw"),
+                width=-1,
+            )
+
+            dpg.add_spacer(height=8)
+            dpg.add_separator()
+            dpg.add_spacer(height=4)
+            dpg.add_button(
+                label=t("close"),
+                callback=lambda: dpg.delete_item(TAG_ABOUT_POPUP),
+                width=-1,
+            )
+
     def _update_ui_text(self) -> None:
         """更新所有 UI 標籤與選單文字。"""
         t = self.state.t
@@ -756,6 +814,7 @@ class PickUpPhotoApp:
         dpg.configure_item(TAG_MENU_VIEW, label=t("view_menu"))
         dpg.configure_item(TAG_MENU_TOOLS, label=t("tools_menu"))
         dpg.configure_item(TAG_MENU_LANG, label=t("lang_menu"))
+        dpg.configure_item(TAG_MENU_HELP, label=t("help_menu"))
 
         dpg.configure_item(TAG_MENU_ITEM_OPEN, label=t("open_folder"))
         dpg.configure_item(TAG_MENU_ITEM_CLEAR, label=t("clear_cache"))
@@ -765,6 +824,7 @@ class PickUpPhotoApp:
         dpg.configure_item(TAG_MENU_ITEM_EXPORT, label=t("export"))
         dpg.configure_item("menu_item_cores", label=t("cores_label"))
         dpg.configure_item(TAG_MENU_RECENT, label=t("recent_folders"))
+        dpg.configure_item("menu_item_about", label=t("about_menu"))
         self._update_recent_menu()
 
     def _update_recent_menu(self) -> None:
