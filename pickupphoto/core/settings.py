@@ -127,6 +127,7 @@ TRANSLATIONS = {
         "tools_menu": "工具",
         "lang_menu": "語言",
         "cores_label": "CPU 核心數",
+        "recent_folders": "最近開啟",
     },
     "en": {
         "title": "PickUpPhoto - RAW Photo Browser",
@@ -184,6 +185,7 @@ TRANSLATIONS = {
         "tools_menu": "Tools",
         "lang_menu": "Language",
         "cores_label": "CPU Cores",
+        "recent_folders": "最近開啟",
     }
 }
 
@@ -195,6 +197,7 @@ def load_settings() -> dict[str, Any]:
     default_settings = {
         "lang": "zh-Hant",
         "max_workers": default_workers,
+        "recent_folders": [],
     }
     if not SETTINGS_FILE.exists():
         return default_settings
@@ -212,6 +215,9 @@ def load_settings() -> dict[str, Any]:
                         default_settings["max_workers"] = int(workers)
                     except ValueError:
                         pass
+                recent = data.get("recent_folders")
+                if isinstance(recent, list):
+                    default_settings["recent_folders"] = [str(x) for x in recent]
                 return default_settings
     except Exception:
         pass
