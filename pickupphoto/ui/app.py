@@ -357,7 +357,7 @@ class PickUpPhotoApp:
     # ─── 鍵盤 Handler ────────────────────────────────────────
 
     def _register_keyboard_handler(self) -> None:
-        """註冊全域鍵盤事件。"""
+        """註冊全域鍵盤與滑鼠事件。"""
         with dpg.handler_registry():
             dpg.add_key_press_handler(key=dpg.mvKey_Left, callback=self._on_key_left)
             dpg.add_key_press_handler(key=dpg.mvKey_Right, callback=self._on_key_right)
@@ -370,6 +370,17 @@ class PickUpPhotoApp:
                     key=key,
                     callback=lambda _, __, s=stars: self._on_rate(s),
                 )
+            # 滑鼠左鍵點擊（格狀視圖選取 / 雙擊進入單張模式）
+            dpg.add_mouse_click_handler(button=0, callback=self._on_grid_click)
+
+    def _on_grid_click(self) -> None:
+        """處理格狀視圖的滑鼠點擊。"""
+        if self._grid_view is None or not self._grid_view._is_visible:
+            return
+        mx, my = dpg.get_mouse_pos(local=False)
+        idx = self._grid_view.hit_test(mx, my)
+        if idx >= 0:
+            self._grid_view.on_click(idx)
 
     def _on_key_left(self) -> None:
         if self.state.view_mode == VIEW_SINGLE and self.state.preview_index > 0:

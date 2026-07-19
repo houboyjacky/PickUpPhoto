@@ -185,7 +185,7 @@ TRANSLATIONS = {
         "tools_menu": "Tools",
         "lang_menu": "Language",
         "cores_label": "CPU Cores",
-        "recent_folders": "最近開啟",
+        "recent_folders": "Recent Folders",
     }
 }
 

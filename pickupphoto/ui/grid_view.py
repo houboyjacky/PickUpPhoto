@@ -345,6 +345,46 @@ class GridView:
         if new_cols != self._cols:
             self._rebuild()
 
+    def hit_test(self, mx: float, my: float) -> int:
+        """將視區滑鼠座標轉換為照片索引，未命中時回傳 -1。"""
+        if not self._photos or not dpg.does_item_exist(self._tag_window):
+            return -1
+
+        # drawlist 在視區的起始座標
+        try:
+            rect_min = dpg.get_item_rect_min(self._tag_draw)
+        except Exception:
+            return -1
+
+        draw_x = rect_min[0]
+        draw_y = rect_min[1]
+
+        # 相對於 drawlist 的滑鼠座標（加上滾動偏移）
+        scroll_y = dpg.get_y_scroll(self._tag_window)
+        local_x = mx - draw_x
+        local_y = my - draw_y + scroll_y
+
+        if local_x < 0 or local_y < 0:
+            return -1
+
+        col = int(local_x // (CELL_W + CELL_PAD))
+        row = int(local_y // (CELL_H + CELL_PAD))
+
+        if col < 0 or col >= self._cols:
+            return -1
+
+        # 確認點擊在格子內（非 padding 空隙）
+        cell_x = local_x - col * (CELL_W + CELL_PAD) - CELL_PAD
+        cell_y = local_y - row * (CELL_H + CELL_PAD) - CELL_PAD
+        if cell_x < 0 or cell_x > CELL_W or cell_y < 0 or cell_y > CELL_H:
+            return -1
+
+        idx = row * self._cols + col
+        if idx < 0 or idx >= len(self._photos):
+            return -1
+
+        return idx
+
     def show(self) -> None:
         if dpg.does_item_exist(self._tag_window):
             dpg.configure_item(self._tag_window, show=True)
