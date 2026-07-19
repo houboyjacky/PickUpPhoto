@@ -368,7 +368,8 @@ class PickUpPhotoApp:
             ]:
                 dpg.add_key_press_handler(
                     key=key,
-                    callback=lambda _, __, s=stars: self._on_rate(s),
+                    callback=self._on_rate,
+                    user_data=stars,
                 )
             # 滑鼠左鍵點擊（格狀視圖選取 / 雙擊進入單張模式）
             dpg.add_mouse_click_handler(button=0, callback=self._on_grid_click)
@@ -393,8 +394,11 @@ class PickUpPhotoApp:
                 self.state.preview_index += 1
                 self._refresh_single_view()
 
-    def _on_rate(self, stars: int) -> None:
+    def _on_rate(self, sender, app_data, user_data) -> None:
         """數字鍵評星。"""
+        stars = user_data
+        if stars is None:
+            return
         photo = self.state.current_photo
         if photo is None or self.state.db is None:
             return
