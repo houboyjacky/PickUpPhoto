@@ -734,7 +734,8 @@ class PickUpPhotoApp:
             dpg.add_menu_item(
                 label=path_str,
                 parent=TAG_MENU_RECENT,
-                callback=lambda _, __, p=path_str: self._on_recent_folder_click(p),
+                callback=self._on_recent_folder_click,
+                user_data=path_str,
             )
         dpg.add_separator(parent=TAG_MENU_RECENT)
         label_clear = "清除歷史紀錄" if self.state.i18n.lang == "zh-Hant" else "Clear History"
@@ -744,8 +745,11 @@ class PickUpPhotoApp:
             callback=self._on_clear_recent_history,
         )
 
-    def _on_recent_folder_click(self, path_str: str) -> None:
+    def _on_recent_folder_click(self, sender, app_data, user_data) -> None:
         """選取歷史路徑時的回呼。"""
+        path_str = user_data
+        if not path_str:
+            return
         folder = Path(path_str)
         if folder.is_dir():
             dpg.set_value(TAG_PATH_INPUT, path_str)
