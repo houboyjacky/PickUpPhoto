@@ -124,14 +124,18 @@ def _load_embedded(path: Path, max_size: int) -> LoadResult:
     讀取 embedded JPEG thumbnail，
     raises LibRawNoThumbnailError 或 LibRawUnsupportedThumbnailError 表示不存在。
     """
+    from PIL import ImageOps
     with rawpy.imread(str(path)) as raw:
         thumb = raw.extract_thumb()
 
     if thumb.format == rawpy.ThumbFormat.JPEG:
         img = Image.open(io.BytesIO(thumb.data)).convert("RGB")
+        img = ImageOps.exif_transpose(img)
         arr = np.array(img, dtype=np.uint8)
     elif thumb.format == rawpy.ThumbFormat.BITMAP:
-        arr = np.array(Image.fromarray(thumb.data).convert("RGB"), dtype=np.uint8)
+        img = Image.fromarray(thumb.data).convert("RGB")
+        img = ImageOps.exif_transpose(img)
+        arr = np.array(img, dtype=np.uint8)
     else:
         raise rawpy.LibRawUnsupportedThumbnailError("Unsupported thumbnail format")
 
