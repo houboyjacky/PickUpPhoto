@@ -328,6 +328,18 @@ class GridView:
         self._assign_group_colors()
         self._draw_visible()
 
+    def on_resize(self) -> None:
+        """當視區大小改變時呼叫，自動調整行數並重建格狀結構。"""
+        if not self._is_visible or not self._photos:
+            return
+
+        vp_w = dpg.get_viewport_client_width()
+        new_cols = max(2, (vp_w - 20) // (CELL_W + CELL_PAD))
+        
+        # 僅當行數改變時才重建，避免不必要的重新排版
+        if new_cols != self._cols:
+            self._rebuild()
+
     def show(self) -> None:
         if dpg.does_item_exist(self._tag_window):
             dpg.configure_item(self._tag_window, show=True)

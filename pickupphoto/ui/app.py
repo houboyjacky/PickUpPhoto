@@ -175,6 +175,7 @@ class PickUpPhotoApp:
             min_height=600,
         )
         dpg.setup_dearpygui()
+        dpg.set_viewport_resize_callback(self._on_viewport_resize)
         dpg.show_viewport()
         dpg.set_primary_window(TAG_MAIN_WINDOW, True)
 
@@ -366,6 +367,11 @@ class PickUpPhotoApp:
             self._grid_view.refresh_badges(photo.filename)
         if self._analysis_panel:
             self._analysis_panel.refresh()
+
+    def _on_viewport_resize(self) -> None:
+        """當視區大小改變時呼叫。"""
+        if self._grid_view:
+            self._grid_view.on_resize()
 
     # ─── 事件回呼 ────────────────────────────────────────────
 
