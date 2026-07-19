@@ -64,7 +64,7 @@ def show_export_dialog(state: "AppState") -> None:
             dpg.add_button(
                 label=t("browse"),
                 callback=lambda: [
-                    dpg.configure_item(TAG_EXPORT_DIALOG, show=False),
+                    dpg.configure_item(TAG_EXPORT_DIALOG, modal=False),
                     dpg.add_file_dialog(
                         label=t("target_folder"),
                         directory_selector=True,
@@ -148,16 +148,16 @@ def _on_dest_selected(sender, app_data: dict) -> None:
     if selections:
         path = list(selections.values())[0]
         dpg.set_value(TAG_DEST_INPUT, path)
-    # 重新顯示主匯出視窗並刪除已關閉的 file_dialog
+    # 將主對話框重新鎖定為 Modal 焦點
     if dpg.does_item_exist(TAG_EXPORT_DIALOG):
-        dpg.configure_item(TAG_EXPORT_DIALOG, show=True)
+        dpg.configure_item(TAG_EXPORT_DIALOG, modal=True)
     dpg.delete_item(sender)
 
 
 def _on_dest_cancel(sender, app_data) -> None:
-    # 使用者取消時，也必須還原主匯出視窗
+    # 取消時，同樣還原為 Modal 視窗
     if dpg.does_item_exist(TAG_EXPORT_DIALOG):
-        dpg.configure_item(TAG_EXPORT_DIALOG, show=True)
+        dpg.configure_item(TAG_EXPORT_DIALOG, modal=True)
     dpg.delete_item(sender)
 
 
