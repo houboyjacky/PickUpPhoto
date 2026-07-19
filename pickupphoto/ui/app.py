@@ -521,14 +521,22 @@ class PickUpPhotoApp:
             group_burst_photos, select_best_in_groups, apply_group_metadata
         )
         from pickupphoto.core.raw_loader import load_embedded_preview
+        from concurrent.futures import ThreadPoolExecutor, as_completed
 
         db = self.state.db
+        if not db:
+            self.state.ai_scanning = False
+            return
         photos = self.state.photos
         total = len(photos)
 
         all_scores: dict[str, dict] = {}
+        scores_lock = threading.Lock()
+        completed = 0
+        completed_lock = threading.Lock()
 
-        for i, photo in enumerate(photos):
+        # 每個任務處理單張照片並寫入 DB
+        def process_photo_ai(photo: PhotoInfo) -> tuple[str, dict[str, Any]]:
             try:
                 result = load_embedded_preview(photo.path, max_size=512)
                 img = result.image
@@ -553,19 +561,34 @@ class PickUpPhotoApp:
                     has_face=has_face,
                 )
                 photo.has_ai_scores = True
-                all_scores[photo.filename] = {
+                
+                scores = {
                     "sharpness": sharpness,
                     "exposure": exposure,
                     "motion_blur": motion_blur,
                     "eye_focus": eye_focus,
                     "has_face": has_face,
                 }
+                return photo.filename, scores
             except Exception:
-                pass
+                return photo.filename, {}
 
-            progress = (i + 1) / total
-            dpg.set_value(TAG_PROGRESS_BAR, progress)
-            dpg.configure_item(TAG_PROGRESS_BAR, overlay=f"AI {i+1}/{total}")
+        # 啟動平行處理
+        t = self.state.t
+        max_workers = self.state.max_workers
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(process_photo_ai, photo): photo for photo in photos}
+            for future in as_completed(futures):
+                filename, scores = future.result()
+                if scores:
+                    with scores_lock:
+                        all_scores[filename] = scores
+                
+                with completed_lock:
+                    completed += 1
+                progress = completed / total
+                dpg.set_value(TAG_PROGRESS_BAR, progress)
+                dpg.configure_item(TAG_PROGRESS_BAR, overlay=f"AI {completed}/{total}")
 
         # 連拍分組
         db.clear_burst_groups()

@@ -71,17 +71,21 @@ def compute_eye_focus(image: np.ndarray) -> tuple[float | None, bool]:
     return round(avg_score, 2), True
 
 
+import threading
+
+_local_storage = threading.local()
+
+
 def _get_face_mesh():
-    """Lazy-init MediaPipe FaceMesh（避免啟動時載入模型）。"""
-    global _face_mesh
-    if _face_mesh is None:
-        _face_mesh = mp.solutions.face_mesh.FaceMesh(
+    """Lazy-init MediaPipe FaceMesh (使用 Thread-Local 儲存以支援多執行緒安全)。"""
+    if not hasattr(_local_storage, "face_mesh"):
+        _local_storage.face_mesh = mp.solutions.face_mesh.FaceMesh(
             static_image_mode=True,
             max_num_faces=1,
             refine_landmarks=True,
             min_detection_confidence=0.5,
         )
-    return _face_mesh
+    return _local_storage.face_mesh
 
 
 def _extract_eye_region(
