@@ -38,6 +38,8 @@ TAG_VIEW_SINGLE_BTN = "btn_view_single"
 TAG_FILTER_COMBO = "filter_combo"
 TAG_AI_SCAN_BTN = "btn_ai_scan"
 TAG_EXPORT_BTN = "btn_export"
+TAG_PATH_INPUT = "input_folder_path"
+
 
 # 視圖模式
 VIEW_GRID = "grid"
@@ -232,7 +234,14 @@ class PickUpPhotoApp:
                 tag=TAG_FOLDER_BTN,
                 label=t("open_folder"),
                 callback=self._on_open_folder,
-                width=130,
+                width=100,
+            )
+            dpg.add_input_text(
+                tag=TAG_PATH_INPUT,
+                hint=t("path_hint"),
+                width=240,
+                on_enter=True,
+                callback=self._on_path_entered,
             )
             dpg.add_spacer(width=10)
             dpg.add_button(
@@ -363,7 +372,22 @@ class PickUpPhotoApp:
         if not selections:
             return
         folder = Path(list(selections.values())[0])
+        dpg.set_value(TAG_PATH_INPUT, str(folder))
         self._load_folder(folder)
+
+    def _on_path_entered(self, sender, app_data: str) -> None:
+        """手動輸入路徑按下 Enter 回呼。"""
+        path_str = app_data.strip()
+        if not path_str:
+            return
+        folder = Path(path_str)
+        if folder.is_dir():
+            self._load_folder(folder)
+        else:
+            dpg.set_value(
+                TAG_EXIF_BAR,
+                "路徑不存在或不是資料夾" if self.state.i18n.lang == "zh-Hant" else "Path does not exist or is not a directory"
+            )
 
     def _load_folder(self, folder: Path) -> None:
         """載入資料夾：掃描 → 開啟 DB → 建立快取。"""
@@ -576,6 +600,7 @@ class PickUpPhotoApp:
         """更新所有 UI 標籤文字。"""
         t = self.state.t
         dpg.configure_item(TAG_FOLDER_BTN, label=t("open_folder"))
+        dpg.configure_item(TAG_PATH_INPUT, hint=t("path_hint"))
         dpg.configure_item(TAG_VIEW_GRID_BTN, label=t("view_grid"))
         dpg.configure_item(TAG_VIEW_SINGLE_BTN, label=t("view_single"))
         dpg.configure_item(TAG_FILTER_LABEL, default_value=t("filter"))
