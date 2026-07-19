@@ -9,18 +9,21 @@
 ## 💻 運行環境與發行說明
 
 * **開發與編譯環境**：本應用程式由作者於 **MacStudio M1 Max (Apple Silicon, macOS)** 系統上開發、編譯並通過完整測試。
-* **安全性警告與開源分發**（解決方案 1）：
-  由於本專案屬於開源分享，輸出的 DMG 安裝檔**未向 Apple 註冊付費開發者證書進行簽章與公證**。其他 Mac 使用者在首次雙擊開啟時，系統可能會彈出「無法驗證開發者」的安全性警告。請依照以下步驟強制開啟：
-  1. 在 `PickUpPhoto` 的應用程式圖示上點擊右鍵（或按住 Control 鍵點擊），然後選擇 **「打開」**。
-  2. 或者前往 macOS 的 **「系統設定」** -> **「隱私權與安全性」**，滑動到最下方，點擊 **「強制允許開啟」**（Open Anyway）。
+
+> [!WARNING]
+> **⚠️ 注意：**
+> 本安裝檔未進行 Apple 開發者簽章與公證。
+> 其他使用者下載安裝後，若開啟時彈出「無法驗證開發者」提示，請遵循以下開源分享解決方案：
+> 1. 於應用程式圖示上按住 Control 鍵並點擊（或點擊右鍵），選擇「打開」。
+> 2. 或者前往「系統設定」->「隱私權與安全性」，在下方點擊「強制允許開啟」。
 
 ---
 
 ## 📦 安裝與下載
 
 ### 方式一：下載 DMG 安裝檔（推薦 macOS 一般用戶）
-1. 前往本專案的 [Releases](https://github.com/your-username/pickupphoto/releases) 頁面。
-2. 下載最新編譯的 `PickUpPhoto_AppleSilicon.dmg` 安裝包。
+1. 前往本專案的 [Releases](https://github.com/houboyjacky/pickupphoto/releases) 頁面。
+2. 下載最新編譯的 `PickUpPhoto_v1.0.0_AppleSilicon.dmg` 安裝包。
 3. 雙擊打開 `.dmg`，將 `PickUpPhoto` 圖示拖曳到 **Applications (應用程式)** 資料夾即可。
 
 ### 方式二：開發者自行建置與執行 (Source Code)
@@ -32,7 +35,7 @@
 #### 本機啟動步驟
 ```bash
 # 1. Clone 專案
-git clone https://github.com/your-username/pickupphoto.git
+git clone https://github.com/houboyjacky/pickupphoto.git
 cd pickupphoto
 
 # 2. 建立虛擬環境
