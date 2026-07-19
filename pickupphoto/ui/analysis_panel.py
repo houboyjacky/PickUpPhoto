@@ -18,12 +18,18 @@ if TYPE_CHECKING:
     from pickupphoto.ui.app import AppState
 
 TAG_PANEL_WINDOW = "analysis_panel_window"
+TAG_PANEL_TITLE = "analysis_panel_title"
+TAG_LABEL_SHARP = "analysis_label_sharpness"
+TAG_LABEL_EXPOSURE = "analysis_label_exposure"
+TAG_LABEL_BLUR = "analysis_label_blur"
+TAG_LABEL_EYE = "analysis_label_eye"
 TAG_SCORE_SHARP = "score_sharpness"
 TAG_SCORE_EXPOSURE = "score_exposure"
 TAG_SCORE_BLUR = "score_motion_blur"
 TAG_SCORE_EYE = "score_eye_focus"
 TAG_BURST_INFO = "burst_info_text"
 TAG_AI_BEST_TEXT = "ai_best_text"
+TAG_LABEL_STARS = "analysis_label_stars"
 TAG_PANEL_STARS = "panel_stars_text"
 TAG_NO_AI_TEXT = "no_ai_text"
 
@@ -45,6 +51,7 @@ class AnalysisPanel:
             return
 
         vp_h = dpg.get_viewport_client_height() - 50
+        t = self._state.t
 
         with dpg.child_window(
             tag=TAG_PANEL_WINDOW,
@@ -54,25 +61,26 @@ class AnalysisPanel:
             height=vp_h,
             pos=(dpg.get_viewport_client_width() - 290, 42),
         ):
-            dpg.add_text("AI 分析", color=(180, 200, 255, 255))
+            dpg.add_text(t("ai_analysis"), tag=TAG_PANEL_TITLE, color=(180, 200, 255, 255))
             dpg.add_separator()
             dpg.add_spacer(height=4)
 
             # 各分析分數
-            for label, tag, tip in [
-                ("🔭 對焦清晰", TAG_SCORE_SHARP, "Laplacian variance"),
-                ("☀️ 曝光正常", TAG_SCORE_EXPOSURE, "直方圖分析"),
-                ("🏃 無運動模糊", TAG_SCORE_BLUR, "方向性邊緣"),
-                ("👁 眼睛對焦", TAG_SCORE_EYE, "MediaPipe FaceMesh"),
-            ]:
-                dpg.add_text(label, color=(160, 175, 210, 255))
-                dpg.add_progress_bar(
-                    tag=tag,
-                    default_value=0.0,
-                    width=-1,
-                    overlay="—",
-                )
-                dpg.add_spacer(height=2)
+            dpg.add_text(t("sharpness"), tag=TAG_LABEL_SHARP, color=(160, 175, 210, 255))
+            dpg.add_progress_bar(tag=TAG_SCORE_SHARP, default_value=0.0, width=-1, overlay="—")
+            dpg.add_spacer(height=2)
+
+            dpg.add_text(t("exposure"), tag=TAG_LABEL_EXPOSURE, color=(160, 175, 210, 255))
+            dpg.add_progress_bar(tag=TAG_SCORE_EXPOSURE, default_value=0.0, width=-1, overlay="—")
+            dpg.add_spacer(height=2)
+
+            dpg.add_text(t("motion_blur"), tag=TAG_LABEL_BLUR, color=(160, 175, 210, 255))
+            dpg.add_progress_bar(tag=TAG_SCORE_BLUR, default_value=0.0, width=-1, overlay="—")
+            dpg.add_spacer(height=2)
+
+            dpg.add_text(t("eye_focus"), tag=TAG_LABEL_EYE, color=(160, 175, 210, 255))
+            dpg.add_progress_bar(tag=TAG_SCORE_EYE, default_value=0.0, width=-1, overlay="—")
+            dpg.add_spacer(height=2)
 
             dpg.add_separator()
             dpg.add_spacer(height=4)
@@ -85,14 +93,14 @@ class AnalysisPanel:
             dpg.add_spacer(height=4)
 
             # 星等
-            dpg.add_text("⭐ 星等", color=(160, 175, 210, 255))
+            dpg.add_text(t("stars_label"), tag=TAG_LABEL_STARS, color=(160, 175, 210, 255))
             dpg.add_text(tag=TAG_PANEL_STARS, default_value="☆☆☆☆☆", color=(255, 200, 50, 255))
             dpg.add_spacer(height=4)
 
             # 未分析提示
             dpg.add_text(
                 tag=TAG_NO_AI_TEXT,
-                default_value="尚未分析\n請按「🤖 掃描 AI」",
+                default_value=t("no_ai"),
                 color=(140, 140, 160, 200),
                 wrap=260,
             )
@@ -136,6 +144,8 @@ class AnalysisPanel:
                 dpg.set_value(tag, 0.0)
                 dpg.configure_item(tag, overlay="—")
 
+        t = self._state.t
+
         # 眼睛對焦（可選）
         if scores and self._state.ai_use_eye_focus:
             ef = scores.get("eye_focus")
@@ -145,13 +155,13 @@ class AnalysisPanel:
                 dpg.configure_item(TAG_SCORE_EYE, overlay=f"{float(ef):.0f}%")
             elif has_face == 0:
                 dpg.set_value(TAG_SCORE_EYE, 0.0)
-                dpg.configure_item(TAG_SCORE_EYE, overlay="無人臉偵測")
+                dpg.configure_item(TAG_SCORE_EYE, overlay="No face detected" if self._state.i18n.lang == "en" else "無人臉偵測")
             else:
                 dpg.set_value(TAG_SCORE_EYE, 0.0)
                 dpg.configure_item(TAG_SCORE_EYE, overlay="—")
         else:
             dpg.set_value(TAG_SCORE_EYE, 0.0)
-            dpg.configure_item(TAG_SCORE_EYE, overlay="（未啟用）")
+            dpg.configure_item(TAG_SCORE_EYE, overlay="Disabled" if self._state.i18n.lang == "en" else "（未啟用）")
 
         # 連拍群組資訊
         burst = db.get_burst_group(photo.filename)
@@ -159,14 +169,23 @@ class AnalysisPanel:
             gid = burst["group_id"]
             size = burst["group_size"]
             rank = burst["group_rank"]
-            dpg.set_value(TAG_BURST_INFO, f"群組 {gid}（{size} 張）  第 {rank} 幀")
+            dpg.set_value(TAG_BURST_INFO, t("burst_info", gid, size, rank))
             if burst["ai_best"]:
-                dpg.set_value(TAG_AI_BEST_TEXT, "🏆 本群組 AI 推薦最佳")
+                dpg.set_value(TAG_AI_BEST_TEXT, t("ai_best_desc"))
             else:
                 dpg.set_value(TAG_AI_BEST_TEXT, "")
         else:
-            dpg.set_value(TAG_BURST_INFO, "非連拍群組")
+            dpg.set_value(TAG_BURST_INFO, t("burst_single"))
             dpg.set_value(TAG_AI_BEST_TEXT, "")
+
+        # 更新面板標題與靜態標籤字型（支援動態切換語言）
+        dpg.configure_item(TAG_PANEL_TITLE, default_value=t("ai_analysis"))
+        dpg.configure_item(TAG_LABEL_SHARP, default_value=t("sharpness"))
+        dpg.configure_item(TAG_LABEL_EXPOSURE, default_value=t("exposure"))
+        dpg.configure_item(TAG_LABEL_BLUR, default_value=t("motion_blur"))
+        dpg.configure_item(TAG_LABEL_EYE, default_value=t("eye_focus"))
+        dpg.configure_item(TAG_LABEL_STARS, default_value=t("stars_label"))
+        dpg.configure_item(TAG_NO_AI_TEXT, default_value=t("no_ai"))
 
         # 星等
         stars_str = "★" * photo.stars + "☆" * (5 - photo.stars)

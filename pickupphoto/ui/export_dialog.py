@@ -43,16 +43,18 @@ def show_export_dialog(state: "AppState") -> None:
     if dpg.does_item_exist(TAG_EXPORT_DIALOG):
         dpg.delete_item(TAG_EXPORT_DIALOG)
 
+    t = state.t
+
     with dpg.window(
         tag=TAG_EXPORT_DIALOG,
-        label="📤 輸出設定",
+        label=t("export_title"),
         modal=True,
         width=520,
         height=380,
         pos=(200, 150),
         no_resize=True,
     ):
-        dpg.add_text("目標資料夾：")
+        dpg.add_text(t("target_folder"))
         with dpg.group(horizontal=True):
             dpg.add_input_text(
                 tag=TAG_DEST_INPUT,
@@ -60,9 +62,9 @@ def show_export_dialog(state: "AppState") -> None:
                 width=380,
             )
             dpg.add_button(
-                label="瀏覽",
+                label=t("browse"),
                 callback=lambda: dpg.add_file_dialog(
-                    label="選擇目標資料夾",
+                    label=t("target_folder"),
                     directory_selector=True,
                     show=True,
                     callback=_on_dest_selected,
@@ -76,34 +78,34 @@ def show_export_dialog(state: "AppState") -> None:
         dpg.add_separator()
         dpg.add_spacer(height=6)
 
-        dpg.add_text("篩選條件：")
+        dpg.add_text(t("filter_cond"))
         with dpg.group(horizontal=True):
             dpg.add_combo(
                 tag=TAG_FILTER_MODE_COMBO,
-                items=["≥（大於等於）", "=（等於）"],
-                default_value="≥（大於等於）",
-                width=160,
+                items=["≥", "="],
+                default_value="≥",
+                width=80,
                 callback=_update_preview,
                 user_data=state,
             )
             dpg.add_combo(
                 tag=TAG_FILTER_STARS_COMBO,
-                items=["1★", "2★", "3★", "4★", "5★"],
-                default_value="3★",
-                width=80,
+                items=["1", "2", "3", "4", "5"],
+                default_value="3",
+                width=60,
                 callback=_update_preview,
                 user_data=state,
             )
             dpg.add_spacer(width=10)
-            dpg.add_text(tag=TAG_PREVIEW_COUNT, default_value="符合：— 張")
+            dpg.add_text(tag=TAG_PREVIEW_COUNT, default_value="")
 
         dpg.add_spacer(height=8)
-        dpg.add_text("同名衝突處理：")
+        dpg.add_text(t("conflict_handling"))
         dpg.add_combo(
             tag=TAG_CONFLICT_COMBO,
-            items=["自動重命名", "跳過", "覆蓋"],
-            default_value="自動重命名",
-            width=160,
+            items=[t("conflict_rename"), t("conflict_skip"), t("conflict_overwrite")],
+            default_value=t("conflict_rename"),
+            width=180,
         )
 
         dpg.add_spacer(height=10)
@@ -122,13 +124,13 @@ def show_export_dialog(state: "AppState") -> None:
         with dpg.group(horizontal=True):
             dpg.add_button(
                 tag=TAG_EXPORT_START_BTN,
-                label="▶ 開始複製",
+                label=t("start_export"),
                 callback=lambda: _start_export(state),
                 width=130,
             )
             dpg.add_spacer(width=10)
             dpg.add_button(
-                label="關閉",
+                label=t("close"),
                 callback=lambda: dpg.delete_item(TAG_EXPORT_DIALOG),
                 width=80,
             )
@@ -146,14 +148,15 @@ def _on_dest_selected(sender, app_data: dict) -> None:
 
 def _update_preview(sender, app_data, state: "AppState") -> None:
     """更新符合數量預覽。"""
+    t = state.t
     if not state.photos:
-        dpg.set_value(TAG_PREVIEW_COUNT, "符合：0 張")
+        dpg.set_value(TAG_PREVIEW_COUNT, t("match_count", 0))
         return
 
     mode = _get_filter_mode()
     stars = _get_filter_stars()
     matched = filter_photos(state.photos, mode, stars)
-    dpg.set_value(TAG_PREVIEW_COUNT, f"符合：{len(matched)} 張")
+    dpg.set_value(TAG_PREVIEW_COUNT, t("match_count", len(matched)))
 
     # 0 張時禁用開始按鈕
     dpg.configure_item(TAG_EXPORT_START_BTN, enabled=len(matched) > 0)
@@ -161,18 +164,19 @@ def _update_preview(sender, app_data, state: "AppState") -> None:
 
 def _start_export(state: "AppState") -> None:
     """開始複製流程（背景執行緒）。"""
+    t = state.t
     dest_str = dpg.get_value(TAG_DEST_INPUT).strip()
     if not dest_str:
-        dpg.set_value(TAG_EXPORT_STATUS, "⚠️ 請指定目標資料夾")
+        dpg.set_value(TAG_EXPORT_STATUS, "Please specify a target folder" if state.i18n.lang == "en" else "請指定目標資料夾")
         return
 
     mode = _get_filter_mode()
     stars = _get_filter_stars()
-    conflict = _get_conflict_action()
+    conflict = _get_conflict_action(t)
 
     matched = filter_photos(state.photos, mode, stars)
     if not matched:
-        dpg.set_value(TAG_EXPORT_STATUS, "無符合條件的照片")
+        dpg.set_value(TAG_EXPORT_STATUS, t("match_count", 0))
         return
 
     config = ExportConfig(
@@ -183,18 +187,19 @@ def _start_export(state: "AppState") -> None:
     )
 
     dpg.configure_item(TAG_EXPORT_START_BTN, enabled=False)
-    dpg.set_value(TAG_EXPORT_STATUS, "複製中...")
+    dpg.set_value(TAG_EXPORT_STATUS, t("exporting"))
     dpg.set_value(TAG_EXPORT_PROGRESS, 0.0)
 
     threading.Thread(
         target=_export_worker,
-        args=(matched, config),
+        args=(state, matched, config),
         daemon=True,
     ).start()
 
 
-def _export_worker(photos, config: ExportConfig) -> None:
+def _export_worker(state: "AppState", photos, config: ExportConfig) -> None:
     total = len(photos)
+    t = state.t
 
     def on_progress(completed: int, total: int, filename: str) -> None:
         dpg.set_value(TAG_EXPORT_PROGRESS, completed / total)
@@ -203,29 +208,29 @@ def _export_worker(photos, config: ExportConfig) -> None:
     result = export_photos(photos, config, on_progress=on_progress)
 
     dpg.set_value(TAG_EXPORT_PROGRESS, 1.0)
-    summary = f"✅ 完成！已複製 {len(result.copied)} 張"
+    summary = t("export_success", len(result.copied))
     if result.skipped:
-        summary += f"，跳過 {len(result.skipped)} 張"
+        summary += t("export_skipped", len(result.skipped))
     if result.errors:
-        summary += f"，{len(result.errors)} 張失敗"
+        summary += t("export_failed", len(result.errors))
     dpg.set_value(TAG_EXPORT_STATUS, summary)
     dpg.configure_item(TAG_EXPORT_START_BTN, enabled=True)
 
 
 def _get_filter_mode() -> FilterMode:
     val = dpg.get_value(TAG_FILTER_MODE_COMBO)
-    return FilterMode.GTE if val.startswith("≥") else FilterMode.EQ
+    return FilterMode.GTE if val == "≥" else FilterMode.EQ
 
 
 def _get_filter_stars() -> int:
     val = dpg.get_value(TAG_FILTER_STARS_COMBO)
-    return int(val[0])
+    return int(val)
 
 
-def _get_conflict_action() -> ConflictAction:
+def _get_conflict_action(t) -> ConflictAction:
     val = dpg.get_value(TAG_CONFLICT_COMBO)
-    if val == "跳過":
+    if val == t("conflict_skip"):
         return ConflictAction.SKIP
-    elif val == "覆蓋":
+    elif val == t("conflict_overwrite"):
         return ConflictAction.OVERWRITE
     return ConflictAction.RENAME

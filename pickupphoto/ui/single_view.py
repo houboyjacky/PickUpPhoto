@@ -72,7 +72,7 @@ class SingleView:
 
         # 更新按鈕狀態
         if dpg.does_item_exist(TAG_FULL_DECODE_BTN):
-            dpg.configure_item(TAG_FULL_DECODE_BTN, label="🔍 完整解碼")
+            dpg.configure_item(TAG_FULL_DECODE_BTN, label=self._state.t("decode_btn"))
 
         # 若是同一張，不重新載入 texture
         if photo.filename == self._current_filename:
@@ -146,7 +146,7 @@ class SingleView:
         photo = self._state.current_photo
         if photo is None:
             return
-        dpg.configure_item(TAG_FULL_DECODE_BTN, label="⏳ 解碼中...")
+        dpg.configure_item(TAG_FULL_DECODE_BTN, label=self._state.t("decoding"))
         import threading
         threading.Thread(
             target=self._full_decode_worker,
@@ -160,9 +160,9 @@ class SingleView:
             result = load_full_decode(photo.path)
             self._is_full_decoded = True
             self._update_main_texture(result.image)
-            dpg.configure_item(TAG_FULL_DECODE_BTN, label="✅ 完整解碼")
+            dpg.configure_item(TAG_FULL_DECODE_BTN, label=self._state.t("decode_success"))
         except Exception as e:
-            dpg.configure_item(TAG_FULL_DECODE_BTN, label="❌ 解碼失敗")
+            dpg.configure_item(TAG_FULL_DECODE_BTN, label=self._state.t("decode_failed"))
 
     def _build_if_needed(self) -> None:
         """首次顯示時建立 DPG 元件。"""
@@ -190,7 +190,7 @@ class SingleView:
                 dpg.add_spacer(width=20)
                 dpg.add_button(
                     tag=TAG_FULL_DECODE_BTN,
-                    label="🔍 完整解碼",
+                    label=self._state.t("decode_btn"),
                     callback=self.on_full_decode,
                     width=120,
                 )

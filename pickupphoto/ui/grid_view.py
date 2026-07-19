@@ -206,12 +206,15 @@ class GridView:
                 parent=draw_parent,
             )
 
-        # Badge：🏆（左上）
+        t = self._state.t
+
+        # Badge：[AI最佳]（左上）
         if photo.ai_best:
             dpg.draw_text(
-                (x0 + 4, y0 + 4), "🏆",
+                (x0 + 4, y0 + 4),
+                t("ai_best_badge"),
                 color=(255, 215, 0, 255),
-                size=14,
+                size=12,
                 parent=draw_parent,
             )
 
@@ -226,11 +229,12 @@ class GridView:
                 parent=draw_parent,
             )
 
-        # Badge：⚠️（右下，AI 問題）
+        # Badge：[!]（右下，AI 問題）
         if photo.has_ai_scores and self._has_warning(photo):
             dpg.draw_text(
-                (x1 - 22, y1 - 20), "⚠️",
-                color=(255, 140, 0, 230),
+                (x1 - 28, y1 - 20),
+                t("warning_badge"),
+                color=(255, 100, 0, 230),
                 size=13,
                 parent=draw_parent,
             )

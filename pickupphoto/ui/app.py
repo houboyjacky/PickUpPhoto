@@ -44,20 +44,24 @@ VIEW_GRID = "grid"
 VIEW_SINGLE = "single"
 
 # 篩選選項
-FILTER_OPTIONS = ["全部", "≥1★", "≥2★", "≥3★", "≥4★", "=5★", "=4★", "=3★", "=2★", "=1★"]
+TAG_FILTER_LABEL = "filter_label"
+TAG_LANG_COMBO = "lang_combo"
 
 
 class AppState:
     """應用程式全域狀態（單例）。"""
 
     def __init__(self) -> None:
+        from pickupphoto.core.settings import I18N
+        self.i18n = I18N()
+
         self.folder: Path | None = None
         self.photos: list[PhotoInfo] = []
         self.filtered_photos: list[PhotoInfo] = []  # 當前篩選後的清單
         self.selected_index: int = -1               # 格狀視圖選取索引（filtered 中）
         self.preview_index: int = 0                 # 單張模式當前索引（filtered 中）
         self.view_mode: str = VIEW_GRID
-        self.filter_option: str = "全部"
+        self.filter_option = self.t("all")
 
         self.db: Database | None = None
         self.cache: ThumbnailCache | None = None
@@ -70,6 +74,10 @@ class AppState:
         self.cache_progress: int = 0
         self.cache_total: int = 0
 
+    def t(self, key: str, *args: any) -> str:
+        """語系翻譯。"""
+        return self.i18n.t(key, *args)
+
     @property
     def current_photo(self) -> PhotoInfo | None:
         idx = self.preview_index if self.view_mode == VIEW_SINGLE else self.selected_index
@@ -79,14 +87,33 @@ class AppState:
 
     def apply_filter(self) -> None:
         """依 filter_option 重新計算 filtered_photos。"""
-        opt = self.filter_option
-        if opt == "全部":
+        # 取得當前語言的所有篩選文字選項
+        t = self.t
+        filter_items = [
+            t("all"),
+            t("stars_gte", 1),
+            t("stars_gte", 2),
+            t("stars_gte", 3),
+            t("stars_gte", 4),
+            t("stars_eq", 5),
+            t("stars_eq", 4),
+            t("stars_eq", 3),
+            t("stars_eq", 2),
+            t("stars_eq", 1),
+        ]
+
+        try:
+            idx = filter_items.index(self.filter_option)
+        except ValueError:
+            idx = 0
+
+        if idx == 0:
             self.filtered_photos = list(self.photos)
-        elif opt.startswith("≥"):
-            n = int(opt[1])
+        elif 1 <= idx <= 4:
+            n = idx  # 1, 2, 3, 4
             self.filtered_photos = [p for p in self.photos if p.stars >= n]
-        elif opt.startswith("="):
-            n = int(opt[1])
+        elif 5 <= idx <= 9:
+            n = 10 - idx  # 5, 4, 3, 2, 1
             self.filtered_photos = [p for p in self.photos if p.stars == n]
         else:
             self.filtered_photos = list(self.photos)
@@ -197,48 +224,61 @@ class PickUpPhotoApp:
 
     def _build_toolbar(self) -> None:
         """頂部工具列。"""
+        t = self.state.t
+        # 建立預設翻譯的篩選選項
+        filter_items = self._get_filter_items()
+
         with dpg.group(tag=TAG_TOOLBAR, horizontal=True):
             dpg.add_button(
                 tag=TAG_FOLDER_BTN,
-                label="📂 開啟資料夾",
+                label=t("open_folder"),
                 callback=self._on_open_folder,
                 width=130,
             )
             dpg.add_spacer(width=10)
             dpg.add_button(
                 tag=TAG_VIEW_GRID_BTN,
-                label="⊞ 格狀",
+                label=t("view_grid"),
                 callback=lambda: self._switch_view(VIEW_GRID),
                 width=80,
             )
             dpg.add_button(
                 tag=TAG_VIEW_SINGLE_BTN,
-                label="▣ 單張",
+                label=t("view_single"),
                 callback=lambda: self._switch_view(VIEW_SINGLE),
                 width=80,
             )
             dpg.add_spacer(width=20)
-            dpg.add_text("篩選：")
+            dpg.add_text(t("filter"), tag=TAG_FILTER_LABEL)
             dpg.add_combo(
                 tag=TAG_FILTER_COMBO,
-                items=FILTER_OPTIONS,
-                default_value="全部",
-                width=90,
+                items=filter_items,
+                default_value=self.state.filter_option,
+                width=110,
                 callback=self._on_filter_change,
             )
             dpg.add_spacer(width=20)
             dpg.add_button(
                 tag=TAG_AI_SCAN_BTN,
-                label="🤖 掃描 AI",
+                label=t("scan_ai"),
                 callback=self._on_ai_scan,
-                width=100,
+                width=110,
             )
             dpg.add_spacer(width=10)
             dpg.add_button(
                 tag=TAG_EXPORT_BTN,
-                label="📤 輸出",
+                label=t("export"),
                 callback=self._on_export,
                 width=80,
+            )
+            dpg.add_spacer(width=20)
+            dpg.add_text(t("lang_label") + ":")
+            dpg.add_combo(
+                tag=TAG_LANG_COMBO,
+                items=["繁體中文", "English"],
+                default_value="繁體中文" if self.state.i18n.lang == "zh-Hant" else "English",
+                width=100,
+                callback=self._on_lang_change,
             )
             # 進度條（右側）
             dpg.add_spacer(width=20)
@@ -260,7 +300,7 @@ class PickUpPhotoApp:
     def _build_status_bar(self) -> None:
         """底部 EXIF 資訊列。"""
         with dpg.group(horizontal=True):
-            dpg.add_text(tag=TAG_EXIF_BAR, default_value="請開啟資料夾以開始")
+            dpg.add_text(tag=TAG_EXIF_BAR, default_value=self.state.t("exif_empty"))
             dpg.add_spacer(width=-1)
             dpg.add_text(tag=TAG_STATUS_BAR, default_value="")
 
@@ -310,7 +350,7 @@ class PickUpPhotoApp:
     def _on_open_folder(self) -> None:
         """開啟資料夾選擇器。"""
         dpg.add_file_dialog(
-            label="選擇照片資料夾",
+            label=self.state.t("open_folder"),
             directory_selector=True,
             show=True,
             callback=self._on_folder_selected,
@@ -338,7 +378,7 @@ class PickUpPhotoApp:
         self.state.selected_index = -1
         self.state.preview_index = 0
 
-        dpg.set_value(TAG_EXIF_BAR, f"掃描中：{folder.name}...")
+        dpg.set_value(TAG_EXIF_BAR, f"{self.state.t('scanning_files')} {folder.name}...")
 
         # 背景掃描
         threading.Thread(target=self._scan_worker, args=(folder,), daemon=True).start()
@@ -347,11 +387,11 @@ class PickUpPhotoApp:
         try:
             photos = scan_folder(folder)
         except Exception as e:
-            dpg.set_value(TAG_EXIF_BAR, f"掃描失敗：{e}")
+            dpg.set_value(TAG_EXIF_BAR, f"Failed: {e}" if self.state.i18n.lang == "en" else f"掃描失敗：{e}")
             return
 
         if not photos:
-            dpg.set_value(TAG_EXIF_BAR, "此資料夾未找到支援的 RAW 檔案（NEF / RAF）")
+            dpg.set_value(TAG_EXIF_BAR, self.state.t("no_files_found"))
             return
 
         db = Database(folder)
@@ -382,7 +422,7 @@ class PickUpPhotoApp:
 
         # 檢查 TTL
         if cache.check_ttl():
-            dpg.set_value(TAG_EXIF_BAR, "快取已過期，正在重建...")
+            dpg.set_value(TAG_EXIF_BAR, self.state.t("cache_expired"))
 
         # 啟動背景快取建立
         cache.start_build(
@@ -390,7 +430,7 @@ class PickUpPhotoApp:
             on_done=self._on_cache_done,
         )
 
-        dpg.set_value(TAG_STATUS_BAR, f"{len(photos)} 張")
+        dpg.set_value(TAG_STATUS_BAR, f"{len(photos)} files" if self.state.i18n.lang == "en" else f"{len(photos)} 張")
         if self._grid_view:
             self._grid_view.load(photos)
 
@@ -398,13 +438,14 @@ class PickUpPhotoApp:
         self.state.cache_progress = completed
         progress = completed / total if total > 0 else 0.0
         dpg.set_value(TAG_PROGRESS_BAR, progress)
-        dpg.configure_item(TAG_PROGRESS_BAR, overlay=f"快取 {completed}/{total}")
+        overlay_text = f"Cache {completed}/{total}" if self.state.i18n.lang == "en" else f"快取 {completed}/{total}"
+        dpg.configure_item(TAG_PROGRESS_BAR, overlay=overlay_text)
         if self._grid_view:
             self._grid_view.on_thumbnail_ready(filename)
 
     def _on_cache_done(self) -> None:
         dpg.set_value(TAG_PROGRESS_BAR, 1.0)
-        dpg.configure_item(TAG_PROGRESS_BAR, overlay="快取完成")
+        dpg.configure_item(TAG_PROGRESS_BAR, overlay="Cache Done" if self.state.i18n.lang == "en" else "快取完成")
         if self._grid_view:
             self._grid_view.refresh_all()
 
@@ -419,7 +460,7 @@ class PickUpPhotoApp:
         if self.state.ai_scanning or not self.state.photos:
             return
         self.state.ai_scanning = True
-        dpg.configure_item(TAG_AI_SCAN_BTN, label="🔄 掃描中...")
+        dpg.configure_item(TAG_AI_SCAN_BTN, label="Scanning..." if self.state.i18n.lang == "en" else "掃描中...")
         threading.Thread(target=self._ai_scan_worker, daemon=True).start()
 
     def _ai_scan_worker(self) -> None:
@@ -496,9 +537,9 @@ class PickUpPhotoApp:
                 )
 
         self.state.ai_scanning = False
-        dpg.configure_item(TAG_AI_SCAN_BTN, label="🤖 掃描 AI")
+        dpg.configure_item(TAG_AI_SCAN_BTN, label=t("scan_ai"))
         dpg.set_value(TAG_PROGRESS_BAR, 1.0)
-        dpg.configure_item(TAG_PROGRESS_BAR, overlay="AI 分析完成")
+        dpg.configure_item(TAG_PROGRESS_BAR, overlay="AI Done" if self.state.i18n.lang == "en" else "AI 分析完成")
 
         if self._grid_view:
             self._grid_view.refresh_all()
@@ -507,6 +548,65 @@ class PickUpPhotoApp:
         """開啟輸出對話。"""
         from pickupphoto.ui.export_dialog import show_export_dialog
         show_export_dialog(self.state)
+
+    # ─── 語言切換與更新 ────────────────────────────────────────
+
+    def _get_filter_items(self) -> list[str]:
+        t = self.state.t
+        return [
+            t("all"),
+            t("stars_gte", 1),
+            t("stars_gte", 2),
+            t("stars_gte", 3),
+            t("stars_gte", 4),
+            t("stars_eq", 5),
+            t("stars_eq", 4),
+            t("stars_eq", 3),
+            t("stars_eq", 2),
+            t("stars_eq", 1),
+        ]
+
+    def _on_lang_change(self, sender, app_data: str) -> None:
+        """切換介面語言。"""
+        lang_code = "zh-Hant" if app_data == "繁體中文" else "en"
+        if self.state.i18n.set_language(lang_code):
+            self._update_ui_text()
+
+    def _update_ui_text(self) -> None:
+        """更新所有 UI 標籤文字。"""
+        t = self.state.t
+        dpg.configure_item(TAG_FOLDER_BTN, label=t("open_folder"))
+        dpg.configure_item(TAG_VIEW_GRID_BTN, label=t("view_grid"))
+        dpg.configure_item(TAG_VIEW_SINGLE_BTN, label=t("view_single"))
+        dpg.configure_item(TAG_FILTER_LABEL, default_value=t("filter"))
+        dpg.configure_item(TAG_AI_SCAN_BTN, label=t("scan_ai"))
+        dpg.configure_item(TAG_EXPORT_BTN, label=t("export"))
+
+        # 更新篩選下拉清單內容
+        items = self._get_filter_items()
+        dpg.configure_item(TAG_FILTER_COMBO, items=items)
+
+        # 重置當前篩選選擇（對應新語言）
+        # 尋找匹配項或使用預設
+        if self.state.filter_option not in items:
+            self.state.filter_option = items[0]
+            dpg.set_value(TAG_FILTER_COMBO, items[0])
+            self.state.apply_filter()
+
+        # 底部狀態列與快取進度條
+        if not self.state.folder:
+            dpg.set_value(TAG_EXIF_BAR, t("exif_empty"))
+        else:
+            dpg.set_value(TAG_STATUS_BAR, f"{len(self.state.photos)} files" if self.state.i18n.lang == "en" else f"{len(self.state.photos)} 張")
+            self._update_exif_bar()
+
+        # 刷新右側 AI 面板
+        if self._analysis_panel:
+            self._analysis_panel.refresh()
+
+        # 刷新格狀縮圖 Badge 字樣
+        if self._grid_view:
+            self._grid_view.refresh_all()
 
     # ─── 視圖切換 ────────────────────────────────────────────
 
