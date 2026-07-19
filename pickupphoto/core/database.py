@@ -228,6 +228,11 @@ class Database:
         """已快取縮圖張數。"""
         return self.execute("SELECT COUNT(*) FROM thumbnails").fetchone()[0]
 
+    def delete_thumbnail(self, filename: str) -> None:
+        """刪除單張快取記錄（用於強制重新快取）。"""
+        self.execute("DELETE FROM thumbnails WHERE filename = ?", (filename,))
+        self.commit()
+
     # ─── 評分 ─────────────────────────────────────────────────
 
     def set_rating(self, filename: str, stars: int) -> None:

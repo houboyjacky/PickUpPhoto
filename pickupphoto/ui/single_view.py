@@ -26,6 +26,7 @@ TAG_SINGLE_WINDOW = "single_scroll_window"
 TAG_SINGLE_DRAW = "single_draw"
 TAG_SINGLE_TOOLBAR = "single_toolbar"
 TAG_FULL_DECODE_BTN = "btn_full_decode"
+TAG_RECACHE_BTN = "btn_recache"
 TAG_SINGLE_LOADING = "single_loading_text"
 TAG_PHOTO_COUNTER = "photo_counter"
 
@@ -184,6 +185,32 @@ class SingleView:
         except Exception as e:
             dpg.configure_item(TAG_FULL_DECODE_BTN, label=self._state.t("decode_failed"))
 
+    def on_recache(self) -> None:
+        """重新快取按鈕回呼：刪除舊快取并重新解碼。"""
+        photo = self._state.current_photo
+        cache = getattr(self._state, "cache", None)
+        if photo is None or cache is None:
+            return
+
+        # 按鈕切換為過渡狀態
+        if dpg.does_item_exist(TAG_RECACHE_BTN):
+            dpg.configure_item(TAG_RECACHE_BTN,
+                               label=self._state.t("recaching"),
+                               enabled=False)
+
+        def _on_done(filename: str) -> None:
+            # 完成後更新按鈕文字並重新載入預覽圖
+            if dpg.does_item_exist(TAG_RECACHE_BTN):
+                dpg.configure_item(TAG_RECACHE_BTN,
+                                   label=self._state.t("recache_done"),
+                                   enabled=True)
+            # 清除已載入的大圖快取，強迼重載
+            self._current_filename = None
+            self._current_arr = None
+            self.show_photo(self._state.preview_index)
+
+        cache.recache_photo(photo, on_done=_on_done)
+
     def _build_if_needed(self) -> None:
         """首次顯示時建立 DPG 元件。"""
         if dpg.does_item_exist(TAG_SINGLE_WINDOW):
@@ -204,7 +231,7 @@ class SingleView:
             height=-1,
             show=False,
         ):
-            # 上方計數器 + 完整解碼按鈕
+            # 上方計數器 + 完整解碼按鈕 + 重新快取按鈕
             with dpg.group(horizontal=True, tag=TAG_SINGLE_TOOLBAR):
                 dpg.add_text(tag=TAG_PHOTO_COUNTER, default_value="")
                 dpg.add_spacer(width=20)
@@ -213,6 +240,13 @@ class SingleView:
                     label=self._state.t("decode_btn"),
                     callback=self.on_full_decode,
                     width=120,
+                )
+                dpg.add_spacer(width=8)
+                dpg.add_button(
+                    tag=TAG_RECACHE_BTN,
+                    label=self._state.t("recache_btn"),
+                    callback=self.on_recache,
+                    width=130,
                 )
 
             # 主預覽繪圖區

@@ -72,6 +72,10 @@ TRANSLATIONS = {
         "lang_menu": "語言",
         "cores_label": "CPU 核心數",
         "recent_folders": "最近開啟",
+        "recache_btn": "重新快取",
+        "recaching": "重新快取中...",
+        "recache_done": "快取已更新",
+        "recache_failed": "重新快取失敗",
     },
     "en": {
         "title": "PickUpPhoto - RAW Photo Browser",
@@ -130,6 +134,10 @@ TRANSLATIONS = {
         "lang_menu": "Language",
         "cores_label": "CPU Cores",
         "recent_folders": "Recent Folders",
+        "recache_btn": "Re-cache Photo",
+        "recaching": "Re-caching...",
+        "recache_done": "Cache updated",
+        "recache_failed": "Re-cache failed",
     }
 }
 

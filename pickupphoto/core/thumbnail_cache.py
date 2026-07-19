@@ -187,6 +187,48 @@ class ThumbnailCache:
         """回傳快取是否已過期（超過 ttl_days 天未存取）。"""
         return self._db.is_expired(ttl_days)
 
+    def recache_photo(
+        self,
+        photo: PhotoInfo,
+        on_done: Callable[[str], None] | None = None,
+    ) -> None:
+        """
+        強制重新快取單張照片。
+
+        流程：
+        1. 刪除 DB 中的舊快取記錄
+        2. 從磁碟讀取最新 mtime 並更新 PhotoInfo
+        3. 在背景執行緒重新解碼並寫入快取
+        4. 完成後呼叫 on_done(filename)
+        """
+        self._db.delete_thumbnail(photo.filename)
+
+        # 更新 mtime（若磁碟上的檔案已被修改）
+        try:
+            photo.mtime = int(photo.path.stat().st_mtime)
+        except OSError:
+            pass
+
+        def _worker() -> None:
+            try:
+                result = load_thumbnail(photo.path)
+                blob = numpy_to_jpeg_bytes(result.image, quality=85)
+                self._db.save_thumbnail(
+                    filename=photo.filename,
+                    blob=blob,
+                    mtime=photo.mtime,
+                    width=result.width,
+                    height=result.height,
+                    has_fallback=result.is_fallback,
+                )
+                photo.has_thumbnail = True
+            except Exception:
+                pass
+            if on_done:
+                on_done(photo.filename)
+
+        threading.Thread(target=_worker, daemon=True, name="RecacheSingle").start()
+
     # ─── 工具 ──────────────────────────────────────────────────
 
     def _find_photo(self, filename: str) -> PhotoInfo | None:
