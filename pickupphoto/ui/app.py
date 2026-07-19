@@ -36,10 +36,22 @@ TAG_FOLDER_BTN = "btn_open_folder"
 TAG_VIEW_GRID_BTN = "btn_view_grid"
 TAG_VIEW_SINGLE_BTN = "btn_view_single"
 TAG_FILTER_COMBO = "filter_combo"
-TAG_AI_SCAN_BTN = "btn_ai_scan"
-TAG_EXPORT_BTN = "btn_export"
 TAG_PATH_INPUT = "input_folder_path"
 
+TAG_MENU_BAR = "main_menu_bar"
+TAG_MENU_FILE = "menu_file"
+TAG_MENU_VIEW = "menu_view"
+TAG_MENU_TOOLS = "menu_tools"
+TAG_MENU_LANG = "menu_lang"
+
+TAG_MENU_ITEM_OPEN = "menu_item_open"
+TAG_MENU_ITEM_CLEAR = "menu_item_clear"
+TAG_MENU_ITEM_GRID = "menu_item_grid"
+TAG_MENU_ITEM_SINGLE = "menu_item_single"
+TAG_MENU_ITEM_SCAN = "menu_item_scan"
+TAG_MENU_ITEM_EXPORT = "menu_item_export"
+TAG_MENU_ITEM_LANG_ZH = "menu_item_lang_zh"
+TAG_MENU_ITEM_LANG_EN = "menu_item_lang_en"
 
 # 視圖模式
 VIEW_GRID = "grid"
@@ -47,7 +59,7 @@ VIEW_SINGLE = "single"
 
 # 篩選選項
 TAG_FILTER_LABEL = "filter_label"
-TAG_LANG_COMBO = "lang_combo"
+
 
 
 class AppState:
@@ -214,6 +226,8 @@ class PickUpPhotoApp:
         from pickupphoto.ui.single_view import SingleView
         from pickupphoto.ui.analysis_panel import AnalysisPanel
 
+        self._build_menu_bar()
+
         with dpg.window(tag=TAG_MAIN_WINDOW, no_title_bar=True, no_move=True,
                         no_resize=True, no_scrollbar=True):
             self._build_toolbar()
@@ -224,6 +238,26 @@ class PickUpPhotoApp:
         self._single_view = SingleView(self.state)
         self._analysis_panel = AnalysisPanel(self.state)
 
+    def _build_menu_bar(self) -> None:
+        """頂部選單列。"""
+        t = self.state.t
+        with dpg.viewport_menu_bar(tag=TAG_MENU_BAR):
+            with dpg.menu(tag=TAG_MENU_FILE, label=t("file_menu")):
+                dpg.add_menu_item(tag=TAG_MENU_ITEM_OPEN, label=t("open_folder"), callback=self._on_open_folder)
+                dpg.add_menu_item(tag=TAG_MENU_ITEM_CLEAR, label=t("clear_cache"), callback=self._on_clear_cache)
+
+            with dpg.menu(tag=TAG_MENU_VIEW, label=t("view_menu")):
+                dpg.add_menu_item(tag=TAG_MENU_ITEM_GRID, label=t("view_grid"), callback=lambda: self._switch_view(VIEW_GRID))
+                dpg.add_menu_item(tag=TAG_MENU_ITEM_SINGLE, label=t("view_single"), callback=lambda: self._switch_view(VIEW_SINGLE))
+
+            with dpg.menu(tag=TAG_MENU_TOOLS, label=t("tools_menu")):
+                dpg.add_menu_item(tag=TAG_MENU_ITEM_SCAN, label=t("scan_ai"), callback=self._on_ai_scan)
+                dpg.add_menu_item(tag=TAG_MENU_ITEM_EXPORT, label=t("export"), callback=self._on_export)
+
+            with dpg.menu(tag=TAG_MENU_LANG, label=t("lang_menu")):
+                dpg.add_menu_item(tag=TAG_MENU_ITEM_LANG_ZH, label="繁體中文", callback=lambda: self._on_lang_menu_select("zh-Hant"))
+                dpg.add_menu_item(tag=TAG_MENU_ITEM_LANG_EN, label="English", callback=lambda: self._on_lang_menu_select("en"))
+
     def _build_toolbar(self) -> None:
         """頂部工具列。"""
         t = self.state.t
@@ -231,31 +265,12 @@ class PickUpPhotoApp:
         filter_items = self._get_filter_items()
 
         with dpg.group(tag=TAG_TOOLBAR, horizontal=True):
-            dpg.add_button(
-                tag=TAG_FOLDER_BTN,
-                label=t("open_folder"),
-                callback=self._on_open_folder,
-                width=100,
-            )
             dpg.add_input_text(
                 tag=TAG_PATH_INPUT,
                 hint=t("path_hint"),
-                width=240,
+                width=500,
                 on_enter=True,
                 callback=self._on_path_entered,
-            )
-            dpg.add_spacer(width=10)
-            dpg.add_button(
-                tag=TAG_VIEW_GRID_BTN,
-                label=t("view_grid"),
-                callback=lambda: self._switch_view(VIEW_GRID),
-                width=80,
-            )
-            dpg.add_button(
-                tag=TAG_VIEW_SINGLE_BTN,
-                label=t("view_single"),
-                callback=lambda: self._switch_view(VIEW_SINGLE),
-                width=80,
             )
             dpg.add_spacer(width=20)
             dpg.add_text(t("filter"), tag=TAG_FILTER_LABEL)
@@ -265,29 +280,6 @@ class PickUpPhotoApp:
                 default_value=self.state.filter_option,
                 width=110,
                 callback=self._on_filter_change,
-            )
-            dpg.add_spacer(width=20)
-            dpg.add_button(
-                tag=TAG_AI_SCAN_BTN,
-                label=t("scan_ai"),
-                callback=self._on_ai_scan,
-                width=110,
-            )
-            dpg.add_spacer(width=10)
-            dpg.add_button(
-                tag=TAG_EXPORT_BTN,
-                label=t("export"),
-                callback=self._on_export,
-                width=80,
-            )
-            dpg.add_spacer(width=20)
-            dpg.add_text(t("lang_label") + ":")
-            dpg.add_combo(
-                tag=TAG_LANG_COMBO,
-                items=["繁體中文", "English"],
-                default_value="繁體中文" if self.state.i18n.lang == "zh-Hant" else "English",
-                width=100,
-                callback=self._on_lang_change,
             )
             # 進度條（右側）
             dpg.add_spacer(width=20)
@@ -485,7 +477,7 @@ class PickUpPhotoApp:
         if self.state.ai_scanning or not self.state.photos:
             return
         self.state.ai_scanning = True
-        dpg.configure_item(TAG_AI_SCAN_BTN, label="Scanning..." if self.state.i18n.lang == "en" else "掃描中...")
+        dpg.configure_item(TAG_MENU_ITEM_SCAN, label="Scanning..." if self.state.i18n.lang == "en" else "掃描中...")
         threading.Thread(target=self._ai_scan_worker, daemon=True).start()
 
     def _ai_scan_worker(self) -> None:
@@ -562,7 +554,7 @@ class PickUpPhotoApp:
                 )
 
         self.state.ai_scanning = False
-        dpg.configure_item(TAG_AI_SCAN_BTN, label=t("scan_ai"))
+        dpg.configure_item(TAG_MENU_ITEM_SCAN, label=t("scan_ai"))
         dpg.set_value(TAG_PROGRESS_BAR, 1.0)
         dpg.configure_item(TAG_PROGRESS_BAR, overlay="AI Done" if self.state.i18n.lang == "en" else "AI 分析完成")
 
@@ -591,29 +583,46 @@ class PickUpPhotoApp:
             t("stars_eq", 1),
         ]
 
-    def _on_lang_change(self, sender, app_data: str) -> None:
-        """切換介面語言。"""
-        lang_code = "zh-Hant" if app_data == "繁體中文" else "en"
+    def _on_lang_menu_select(self, lang_code: str) -> None:
+        """從選單切換介面語言。"""
         if self.state.i18n.set_language(lang_code):
             self._update_ui_text()
 
+    def _on_clear_cache(self) -> None:
+        """清除當前開啟資料夾的快取並重新載入。"""
+        if not self.state.folder:
+            return
+        if self.state.db:
+            self.state.db.close()
+            self.state.db = None
+        from pickupphoto.core.thumbnail_cache import delete_cache
+        delete_cache(self.state.folder)
+        self._load_folder(self.state.folder)
+
     def _update_ui_text(self) -> None:
-        """更新所有 UI 標籤文字。"""
+        """更新所有 UI 標籤與選單文字。"""
         t = self.state.t
-        dpg.configure_item(TAG_FOLDER_BTN, label=t("open_folder"))
         dpg.configure_item(TAG_PATH_INPUT, hint=t("path_hint"))
-        dpg.configure_item(TAG_VIEW_GRID_BTN, label=t("view_grid"))
-        dpg.configure_item(TAG_VIEW_SINGLE_BTN, label=t("view_single"))
         dpg.configure_item(TAG_FILTER_LABEL, default_value=t("filter"))
-        dpg.configure_item(TAG_AI_SCAN_BTN, label=t("scan_ai"))
-        dpg.configure_item(TAG_EXPORT_BTN, label=t("export"))
+
+        # 更新選單列文字
+        dpg.configure_item(TAG_MENU_FILE, label=t("file_menu"))
+        dpg.configure_item(TAG_MENU_VIEW, label=t("view_menu"))
+        dpg.configure_item(TAG_MENU_TOOLS, label=t("tools_menu"))
+        dpg.configure_item(TAG_MENU_LANG, label=t("lang_menu"))
+
+        dpg.configure_item(TAG_MENU_ITEM_OPEN, label=t("open_folder"))
+        dpg.configure_item(TAG_MENU_ITEM_CLEAR, label=t("clear_cache"))
+        dpg.configure_item(TAG_MENU_ITEM_GRID, label=t("view_grid"))
+        dpg.configure_item(TAG_MENU_ITEM_SINGLE, label=t("view_single"))
+        dpg.configure_item(TAG_MENU_ITEM_SCAN, label=t("scan_ai"))
+        dpg.configure_item(TAG_MENU_ITEM_EXPORT, label=t("export"))
 
         # 更新篩選下拉清單內容
         items = self._get_filter_items()
         dpg.configure_item(TAG_FILTER_COMBO, items=items)
 
         # 重置當前篩選選擇（對應新語言）
-        # 尋找匹配項或使用預設
         if self.state.filter_option not in items:
             self.state.filter_option = items[0]
             dpg.set_value(TAG_FILTER_COMBO, items[0])
