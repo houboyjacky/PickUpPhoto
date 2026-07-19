@@ -283,7 +283,7 @@ class GridView:
             width=THUMB_W,
             height=THUMB_H,
             default_value=flat,
-            parent="__demo_depot" if dpg.does_item_exist("__demo_depot") else 0,
+            parent="global_texture_registry",
         )
         self._texture_map[filename] = tag
         return tag

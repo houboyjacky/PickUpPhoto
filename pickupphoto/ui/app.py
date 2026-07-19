@@ -139,6 +139,7 @@ class PickUpPhotoApp:
     def run(self) -> None:
         """啟動 Dear PyGui 主迴圈。"""
         dpg.create_context()
+        dpg.add_texture_registry(tag="global_texture_registry")
         self._setup_font()
         self._setup_theme()
         self._build_ui()

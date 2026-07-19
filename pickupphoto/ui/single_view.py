@@ -126,6 +126,7 @@ class SingleView:
 
         self._current_texture = dpg.add_static_texture(
             width=new_w, height=new_h, default_value=flat,
+            parent="global_texture_registry",
         )
 
         # 更新繪圖區
