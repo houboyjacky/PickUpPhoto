@@ -63,14 +63,18 @@ def show_export_dialog(state: "AppState") -> None:
             )
             dpg.add_button(
                 label=t("browse"),
-                callback=lambda: dpg.add_file_dialog(
-                    label=t("target_folder"),
-                    directory_selector=True,
-                    show=True,
-                    callback=_on_dest_selected,
-                    width=600,
-                    height=400,
-                ),
+                callback=lambda: [
+                    dpg.configure_item(TAG_EXPORT_DIALOG, show=False),
+                    dpg.add_file_dialog(
+                        label=t("target_folder"),
+                        directory_selector=True,
+                        show=True,
+                        callback=_on_dest_selected,
+                        cancel_callback=_on_dest_cancel,
+                        width=600,
+                        height=400,
+                    )
+                ],
                 width=70,
             )
 
@@ -144,6 +148,17 @@ def _on_dest_selected(sender, app_data: dict) -> None:
     if selections:
         path = list(selections.values())[0]
         dpg.set_value(TAG_DEST_INPUT, path)
+    # 重新顯示主匯出視窗並刪除已關閉的 file_dialog
+    if dpg.does_item_exist(TAG_EXPORT_DIALOG):
+        dpg.configure_item(TAG_EXPORT_DIALOG, show=True)
+    dpg.delete_item(sender)
+
+
+def _on_dest_cancel(sender, app_data) -> None:
+    # 使用者取消時，也必須還原主匯出視窗
+    if dpg.does_item_exist(TAG_EXPORT_DIALOG):
+        dpg.configure_item(TAG_EXPORT_DIALOG, show=True)
+    dpg.delete_item(sender)
 
 
 def _update_preview(sender, app_data, state: "AppState") -> None:
