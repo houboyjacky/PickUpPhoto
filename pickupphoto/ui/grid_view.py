@@ -274,9 +274,19 @@ class GridView:
 
     def _upload_texture(self, filename: str, arr: np.ndarray) -> int:
         """上傳 numpy array 至 GPU texture，回傳 texture tag。"""
-        # Resize to THUMB_W x THUMB_H
-        img = Image.fromarray(arr).resize((THUMB_W, THUMB_H), Image.LANCZOS)
-        rgba = np.array(img.convert("RGBA"), dtype=np.float32) / 255.0
+        # 建立黑底背景以維護比例（左右或上下填充黑色）
+        background = Image.new("RGBA", (THUMB_W, THUMB_H), (15, 15, 20, 255)) # 與深色主題搭配的深灰黑色
+        img = Image.fromarray(arr).convert("RGBA")
+        
+        # 等比例縮放至不超過 THUMB_W x THUMB_H
+        img.thumbnail((THUMB_W, THUMB_H), Image.Resampling.LANCZOS)
+        
+        # 置中貼上
+        x = (THUMB_W - img.width) // 2
+        y = (THUMB_H - img.height) // 2
+        background.paste(img, (x, y), img)
+
+        rgba = np.array(background, dtype=np.float32) / 255.0
         flat = rgba.flatten().tolist()
 
         tag = dpg.add_static_texture(
