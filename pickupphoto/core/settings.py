@@ -64,6 +64,7 @@ TRANSLATIONS = {
         "cache_expired": "快取已過期，正在重建...",
         "scanning_files": "正在掃描資料夾...",
         "no_files_found": "此資料夾未找到支援的 RAW 檔案（NEF / RAF）",
+        "path_hint": "或在此輸入/貼上資料夾路徑...",
     },
     "en": {
         "title": "PickUpPhoto - RAW Photo Browser",
@@ -114,6 +115,7 @@ TRANSLATIONS = {
         "cache_expired": "Cache expired, rebuilding...",
         "scanning_files": "Scanning folder...",
         "no_files_found": "No supported RAW files found (NEF/RAF)",
+        "path_hint": "Or enter/paste folder path here...",
     }
 }
 
