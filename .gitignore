@@ -47,4 +47,6 @@ openspec/
 AGENTS.md
 .mcp.json
 .vscode/mcp.json
+.pickupphoto_settings.json
+
 
