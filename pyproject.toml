@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pickupphoto"
-version = "1.0.0"
+version = "1.0.1"
 description = "輕量 RAW 照片瀏覽、評分與輸出工具（NEF / RAF）"
 readme = "README.md"
 requires-python = ">=3.12"
