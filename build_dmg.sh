@@ -38,7 +38,7 @@ PLIST="$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string $VERSION" "$PLIST"
 codesign --force --sign - "$APP"
 codesign --verify --deep --strict "$APP"
-lipo -verify_arch arm64 "$APP/Contents/MacOS/PickUpPhoto"
+lipo "$APP/Contents/MacOS/PickUpPhoto" -verify_arch arm64
 
 echo "=== 驗證封裝後的 .app 與網頁資源 ==="
 "$PYTHON" scripts/smoke_macos_app.py "$APP"
