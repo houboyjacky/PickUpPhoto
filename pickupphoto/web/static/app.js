@@ -485,11 +485,14 @@ byId("more").addEventListener("click", () => {
   byId("grid").children[start]?.focus();
 });
 document.addEventListener("keydown", (event) => {
-  if (event.altKey || event.ctrlKey || event.metaKey || event.isComposing
-      || event.target.closest("input, select, textarea, dialog, [contenteditable]")) return;
-  if (/^[0-5]$/.test(event.key) && !event.repeat) {
+  if (event.altKey || event.ctrlKey || event.metaKey
+      || (event.target instanceof Element && event.target.closest("input, select, textarea, dialog, [contenteditable]"))) return;
+  // Use the physical digit key when the active input method changes event.key.
+  const digit = /^(?:Digit|Numpad)([0-5])$/.exec(event.code)?.[1]
+    ?? (/^[0-5]$/.test(event.key) ? event.key : null);
+  if (digit !== null && !event.shiftKey && !event.repeat) {
     event.preventDefault();
-    rate(Number(event.key));
+    rate(Number(digit));
   } else if (["ArrowLeft", "ArrowRight"].includes(event.key)) {
     event.preventDefault();
     navigate(event.key === "ArrowLeft" ? -1 : 1);
