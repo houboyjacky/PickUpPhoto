@@ -1,99 +1,41 @@
 # PickUpPhoto
 
-> 輕量、開源的 RAW 照片瀏覽、評星與輸出工具，專為個人攝影師設計。
+PickUpPhoto 是 macOS 上的 RAW 照片挑選工具。支援 Nikon NEF 和 Fujifilm RAF，可用格狀縮圖或單張預覽瀏覽照片、查看 EXIF、評分，並依星等篩選後複製原始檔。照片分析包含對焦清晰度、曝光、運動模糊、連拍最佳幀，以及選用的眼部對焦分析。
 
-支援 **Nikon NEF** 與 **Fujifilm RAF** 格式，提供雙模式視圖（格狀縮圖 / 單張預覽）、鍵盤優先操作，並內建 AI 輔助分析（對焦清晰度、曝光、連拍最佳幀推薦）。
+## 安裝與啟動
 
----
+從 [GitHub Releases](https://github.com/houboyjacky/PickUpPhoto/releases) 下載 Apple Silicon 版 DMG，開啟後將 PickUpPhoto 拖到「應用程式」。雙擊 `PickUpPhoto.app` 便會開啟原生視窗。視窗以 Apple WKWebView 顯示介面，RAW 處理與資料都留在 Mac 本機。
 
-## 💻 運行環境與發行說明
+DMG 內的應用程式使用 ad hoc 簽章，尚未經 Apple Developer ID 簽章與公證。下載後可能需要在 macOS「系統設定 → 隱私權與安全性」確認開啟。
 
-* **開發與編譯環境**：本應用程式由作者於 **MacStudio M1 Max (Apple Silicon, macOS)** 系統上開發、編譯並通過完整測試。
+從原始碼執行需要 Python 3.12 或以上。眼部分析與發行建置採用 Python 3.12，搭配包含 FaceMesh 的 MediaPipe 版本。
 
-> [!WARNING]
-> **⚠️ 注意：**
-> 本安裝檔未進行 Apple 開發者簽章與公證。
-> 其他使用者下載安裝後，若開啟時彈出「無法驗證開發者」提示，請遵循以下開源分享解決方案：
-> 1. 於應用程式圖示上按住 Control 鍵並點擊（或點擊右鍵），選擇「打開」。
-> 2. 或者前往「系統設定」->「隱私權與安全性」，在下方點擊「強制允許開啟」。
-
----
-
-## 📦 安裝與下載
-
-### 方式一：下載 DMG 安裝檔（推薦 macOS 一般用戶）
-1. 前往本專案的 [Releases](https://github.com/houboyjacky/pickupphoto/releases) 頁面。
-2. 下載最新編譯的 `PickUpPhoto_v1.0.0_AppleSilicon.dmg` 安裝包。
-3. 雙擊打開 `.dmg`，將 `PickUpPhoto` 圖示拖曳到 **Applications (應用程式)** 資料夾即可。
-
-### 方式二：開發者自行建置與執行 (Source Code)
-
-#### 系統需求
-* **Python 3.10+**（推薦 Python 3.12+，或利用 Python 3.14 free-threaded 模式加速背景載入）
-* macOS（開發環境；架構上不排除跨平台）
-
-#### 本機啟動步驟
 ```bash
-# 1. Clone 專案
-git clone https://github.com/houboyjacky/pickupphoto.git
-cd pickupphoto
-
-# 2. 建立虛擬環境
-python3 -m venv .venv
+python3.12 -m venv .venv
 source .venv/bin/activate
-
-# 3. 安裝依賴
-pip install -e "."
-
-# 4. （可選）安裝眼睛對焦分析模組
-pip install -e ".[face]"
-
-# 5. 執行
+python -m pip install -e '.[dev,face]'
 python -m pickupphoto
 ```
 
----
+也可以將照片資料夾當成第一個參數，或加上 `--browser` 改用預設瀏覽器。從原始碼使用舊版介面時，安裝 `.[legacy]` 並加上 `--legacy`。
 
-## 🛠️ 打包編譯自己專屬的 DMG
-
-如果您希望在本機修改程式碼後自行打包成獨立的 App 與 DMG，本專案提供了一鍵打包腳本（會自動清理 `build/`, `dist/`, `__pycache__` 等暫存編譯快取）：
-
-```bash
-# 賦予執行權限並執行
-chmod +x build_dmg.sh
-./build_dmg.sh
-```
-
----
-
-## ⌨️ 鍵盤快捷鍵
+## 鍵盤操作
 
 | 按鍵 | 功能 |
-|------|------|
-| `0` – `5` | 設定星等（0 = 清除，1–5 = 對應星數，支援主鍵盤與右側數字鍵盤） |
-| `←` | 上一張照片（單張模式） |
-| `→` | 下一張照片（單張模式） |
-| `雙擊縮圖` | 進入單張預覽模式 |
+| --- | --- |
+| `0`–`5` | 評分，0 清除星等 |
+| `←` / `→` | 切換上一張或下一張 |
+| 雙擊縮圖 | 開啟單張預覽 |
+| `Esc` | 從單張預覽回到格狀檢視 |
 
----
+每個照片資料夾內仍使用 `.pickupphoto/ratings.json` 保存使用者評分，`.pickupphoto/cache.db` 保存可重建的縮圖及分析快取。匯出直接複製 RAW 原始檔。
 
-## 📂 資料存放設計
+## 建置與發行
 
-每個被瀏覽的資料夾旁會建立 `.pickupphoto/` 隱藏資料夾：
+在 Apple Silicon Mac 安裝上述開發依賴後執行 `./build_dmg.sh`。腳本會啟動並驗證封裝後的應用程式，輸出 DMG 和對應的 `.sha256`。
 
-```
-/Photos/2024-wedding/
-  ├── IMG_001.NEF
-  ├── IMG_002.NEF
-  └── .pickupphoto/
-      ├── cache.db      ← 縮圖快取 + AI 分析結果（可刪除重建，預設 7 天 TTL）
-      └── ratings.json  ← 使用者評分（永久保留，建議備份）
-```
+GitHub Actions 會在 PR、`main` 推送、`codex/**` 推送與手動執行時測試並打包 DMG，可從當次 workflow 的 Artifacts 下載。正式版本在預定發行的 commit 更新 `pickupphoto/__init__.py` 的 `__version__`，再推送同版本的 `vX.Y.Z` 標籤。通過測試和打包後，Actions 會將 DMG 及校驗檔發佈到 GitHub Releases。
 
-> ⚠️ **ratings.json 是唯一不可重建的資料**，請定期備份或納入版控。
+## 授權
 
----
-
-## 📄 授權條款
-
-本專案採用 **MIT License** 授權。詳見 [LICENSE](LICENSE) 檔案。
+[MIT License](LICENSE)

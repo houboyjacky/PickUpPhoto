@@ -146,9 +146,9 @@ def _populate_exif(info: PhotoInfo) -> None:
         pass  # 無法讀 EXIF，欄位保留 None/空字串
 
 
-def _extract_with_piexif(info: PhotoInfo) -> None:
+def _extract_with_piexif(info: PhotoInfo, jpeg: bytes | None = None) -> None:
     """使用 piexif 提取 EXIF。"""
-    exif_dict = piexif.load(str(info.path))
+    exif_dict = piexif.load(str(info.path) if jpeg is None else jpeg)
 
     image_ifd = exif_dict.get("0th", {})
     exif_ifd = exif_dict.get("Exif", {})
@@ -194,10 +194,11 @@ def _extract_with_piexif(info: PhotoInfo) -> None:
 
 
 def _extract_with_rawpy(info: PhotoInfo) -> None:
-    """使用 rawpy 作為 fallback 讀取基本 metadata。"""
+    """從 RAW 內嵌的 JPEG 讀取 piexif 無法直接取得的 EXIF。"""
     with rawpy.imread(str(info.path)) as raw:
-        # rawpy 提供有限的 metadata
-        pass  # rawpy 本身 EXIF 支援有限，主要作為解碼器
+        thumbnail = raw.extract_thumb()
+        if thumbnail.format == rawpy.ThumbFormat.JPEG:
+            _extract_with_piexif(info, thumbnail.data)
 
 
 def _decode_bytes(value: bytes | str) -> str:

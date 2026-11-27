@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PickUpPhoto</title>
+  <link rel="icon" href="/icon.png">
+  <link rel="stylesheet" href="/app.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><img src="/icon.png" alt="" width="36" height="36"><strong>PickUpPhoto</strong></div>
+    <div class="top-actions">
+      <button type="button" id="open" class="primary" data-t="open">開啟資料夾</button>
+      <button type="button" id="analyze" data-t="analyze" disabled>分析照片</button>
+      <button type="button" id="export" data-t="export" disabled>匯出 RAW</button>
+      <button type="button" id="language" aria-label="Language">EN</button>
+      <button type="button" id="quit" data-t="quit">結束</button>
+    </div>
+  </header>
+  <main class="workspace">
+    <aside class="sidebar">
+      <div>
+        <h2 data-t="library">照片庫</h2>
+        <p id="folder-name" class="folder" data-t="noFolder">尚未開啟資料夾</p>
+        <p id="folder-path" class="muted path"></p>
+      </div>
+      <label class="control" for="recent">
+        <span data-t="recent">最近開啟</span>
+        <select id="recent" disabled></select>
+      </label>
+      <label class="control" for="filter">
+        <span data-t="filter">星等篩選</span>
+        <select id="filter"></select>
+      </label>
+      <div class="shortcuts">
+        <p><kbd>0–5</kbd> <span data-t="rating">評分</span></p>
+        <p><kbd>←</kbd> <kbd>→</kbd> <span data-t="navigate">切換照片</span></p>
+      </div>
+    </aside>
+
+    <section class="content" aria-labelledby="view-title">
+      <div class="section-head">
+        <div><h1 id="view-title" data-t="photos">照片</h1><p id="count" class="muted"></p></div>
+        <div class="segmented" role="group" aria-label="檢視模式" data-label="viewLabel">
+          <button type="button" id="grid-mode" aria-pressed="true" data-t="grid">格狀</button>
+          <button type="button" id="single-mode" aria-pressed="false" data-t="single" disabled>單張</button>
+        </div>
+      </div>
+      <div id="notice" class="notice" role="status" hidden></div>
+      <progress id="progress" aria-label="工作進度" data-label="progressLabel" hidden></progress>
+      <div id="empty" class="empty">
+        <div>
+          <svg class="empty-mark" width="58" height="58" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+            <rect x="7" y="13" width="50" height="38" rx="6" stroke="currentColor" stroke-width="2"/>
+            <circle cx="22" cy="25" r="4" stroke="currentColor" stroke-width="2"/>
+            <path d="m9 44 12-11 8 7 10-12 16 15" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+          </svg>
+          <h2 id="empty-title" data-t="emptyTitle">開啟資料夾開始挑片</h2>
+          <p id="empty-note" class="muted">Nikon NEF · Fujifilm RAF</p>
+          <button type="button" id="empty-open" class="primary" data-t="open">開啟資料夾</button>
+        </div>
+      </div>
+      <div id="grid" class="grid" hidden></div>
+      <button id="more" type="button" data-t="more" hidden>載入更多</button>
+      <div id="single" class="single" hidden>
+        <div id="preview" class="preview"></div>
+        <div class="preview-actions">
+          <button id="prev" type="button" data-t="previous">上一張</button>
+          <button id="next" type="button" data-t="next">下一張</button>
+          <button id="decode" type="button" data-t="decode">完整解碼</button>
+        </div>
+      </div>
+    </section>
+
+    <aside class="inspector">
+      <h2 data-t="details">照片資訊</h2>
+      <p id="inspector-empty" class="muted" data-t="selectPhoto">選取照片查看資訊</p>
+      <div id="photo-details" hidden>
+        <h3 id="photo-name"></h3>
+        <p class="muted" id="photo-size"></p>
+        <div class="detail-section">
+          <h3 data-t="rating">評分</h3>
+          <div id="stars" class="stars" role="group" aria-label="星等" data-label="rating"></div>
+          <button type="button" id="unrate" class="quiet" data-t="unrate">清除星等</button>
+        </div>
+        <div class="detail-section">
+          <h3>EXIF</h3>
+          <p id="exif" class="metadata"></p>
+        </div>
+        <div class="detail-section">
+          <h3 data-t="analysis">分析結果</h3>
+          <p id="burst" class="metadata" hidden></p>
+          <dl id="scores"></dl>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <dialog id="folder-dialog" aria-labelledby="folder-title">
+    <form id="folder-form">
+      <h2 id="folder-title" data-t="open">開啟資料夾</h2>
+      <label class="control"><span data-t="path">資料夾路徑</span>
+        <input id="folder-input" type="text" required placeholder="/Users/…/Photos" autocomplete="off">
+      </label>
+      <p id="folder-error" class="form-error" role="alert" hidden></p>
+      <div class="dialog-actions">
+        <button type="button" id="folder-picker" data-t="browse">瀏覽…</button>
+        <button type="button" data-close="folder-dialog" data-t="cancel">取消</button>
+        <button type="submit" class="primary" data-t="confirmOpen">開啟</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="export-dialog" aria-labelledby="export-title">
+    <form id="export-form">
+      <h2 id="export-title" data-t="export">匯出 RAW</h2>
+      <div class="path-row">
+        <label class="control"><span data-t="target">目標資料夾</span>
+          <input id="export-folder" type="text" required placeholder="/Users/…/Picks" autocomplete="off">
+        </label>
+        <button type="button" id="export-picker" data-t="browse">瀏覽…</button>
+      </div>
+      <label class="control"><span data-t="filter">星等篩選</span><select id="export-filter"></select></label>
+      <label class="control"><span data-t="conflict">同名檔案</span>
+        <select id="conflict">
+          <option value="rename" data-t="rename">重新命名</option>
+          <option value="skip" data-t="skip">跳過</option>
+          <option value="overwrite" data-t="overwrite">覆蓋</option>
+        </select>
+      </label>
+      <p id="export-count" class="muted"></p>
+      <p id="export-error" class="form-error" role="alert" hidden></p>
+      <div class="dialog-actions">
+        <button type="button" data-close="export-dialog" data-t="cancel">取消</button>
+        <button type="submit" class="primary" id="export-submit" data-t="copy">複製原始檔</button>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>

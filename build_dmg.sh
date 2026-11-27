@@ -1,68 +1,53 @@
 #!/bin/bash
-# ==============================================================================
-# PickUpPhoto macOS 一鍵 DMG 打包腳本
-# ==============================================================================
-# 此編譯成果主要在 MacStudio M1 Max (Apple Silicon) 系統上進行測試與編譯。
-# 預設編譯為該架構的原生二進位檔。
+set -euo pipefail
 
-set -e
-
-# 讀取版本號
-VERSION=$(python3 -c "import sys; sys.path.insert(0, '.'); from pickupphoto import __version__; print(__version__)")
-APP_NAME="PickUpPhoto"
-DMG_NAME="PickUpPhoto_v${VERSION}_AppleSilicon.dmg"
-
-echo "=== 1. 清理舊的編譯快取與暫存資料 ==="
-rm -rf build dist *.spec "PickUpPhoto_"*.dmg
-find . -name "*.pyc" -delete
-find . -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
-
-echo "=== 2. 啟動 PyInstaller 封裝 .app ==="
-# --noconsole: 不顯示終端機視窗
-# --name: 指定產出 App 名稱
-# --clean: 每次編譯清除 PyInstaller 快取
-# --icon: 指定 App 圖標
-# --collect-all: 收集相關第三方函式庫的 binary/data (防止 mediapipe 或 rawpy 遺失依賴)
-.venv/bin/pyinstaller \
-    --noconsole \
-    --clean \
-    --name="$APP_NAME" \
-    --icon="app_icon.icns" \
-    --collect-all rawpy \
-    --collect-all mediapipe \
-    pickupphoto/__main__.py
-
-echo "=== 3. 封裝成 DMG 磁碟映像檔 ==="
-if command -v create-dmg &> /dev/null; then
-    echo "偵測到 create-dmg，將製作精美的拖曳式安裝 DMG..."
-    create-dmg \
-        --volname "PickUpPhoto 安裝器" \
-        --window-pos 200 120 \
-        --window-size 600 350 \
-        --icon-size 100 \
-        --icon "$APP_NAME.app" 150 150 \
-        --hide-extension "$APP_NAME.app" \
-        --app-drop-link 450 150 \
-        "$DMG_NAME" \
-        "dist/$APP_NAME.app"
-else
-    echo "未偵測到 create-dmg，使用系統內建 hdiutil 進行基礎 DMG 打包..."
-    # 建立一個臨時資料夾，將 .app 放進去，並建立 Applications 捷徑
-    TEMP_DIR="dist/dmg_temp"
-    mkdir -p "$TEMP_DIR"
-    cp -R "dist/$APP_NAME.app" "$TEMP_DIR/"
-    ln -s /Applications "$TEMP_DIR/Applications"
-    
-    hdiutil create -volname "PickUpPhoto 安裝器" -srcfolder "$TEMP_DIR" -ov -format UDZO "$DMG_NAME"
-    rm -rf "$TEMP_DIR"
+cd "$(dirname "$0")"
+PYTHON_INPUT="${PYTHON_BIN:-.venv/bin/python}"
+PYTHON="$(command -v "$PYTHON_INPUT")"
+if [[ "$(uname -s)" != Darwin || "$("$PYTHON" -c 'import platform; print(platform.machine())')" != arm64 ]]; then
+    echo "請使用 Apple Silicon macOS 與 arm64 Python 建置。" >&2
+    exit 1
 fi
 
-echo "=============================================================================="
-echo "🎉 打包完成！輸出檔案為: $DMG_NAME"
-echo "=============================================================================="
-echo "⚠️  注意："
-echo "本安裝檔未進行 Apple 開發者簽章與公證。"
-echo "其他使用者下載安裝後，若開啟時彈出「無法驗證開發者」提示，請遵循以下開源分享解決方案："
-echo "1. 於應用程式圖示上按住 Control 鍵並點擊（或點擊右鍵），選擇「打開」。"
-echo "2. 或者前往「系統設定」->「隱私權與安全性」，在下方點擊「強制允許開啟」。"
-echo "=============================================================================="
+VERSION="$("$PYTHON" -c 'from pickupphoto import __version__; print(__version__)')"
+OUTPUT="${DMG_OUTPUT_DIR:-$PWD}"
+mkdir -p "$OUTPUT"
+OUTPUT="$(cd "$OUTPUT" && pwd)"
+DMG="PickUpPhoto_v${VERSION}_AppleSilicon.dmg"
+BUILD_DIR="$(mktemp -d)"
+trap 'rm -rf "$BUILD_DIR"' EXIT
+
+FACE_ARGS=()
+if "$PYTHON" -c 'from pickupphoto.analysis.face_focus import is_available; assert is_available()' >/dev/null 2>&1; then
+    FACE_ARGS=(--collect-all mediapipe)
+fi
+
+PYINSTALLER_CONFIG_DIR="$BUILD_DIR/cache" "$PYTHON" -m PyInstaller \
+    --windowed --noconfirm --clean --target-architecture arm64 \
+    --name PickUpPhoto --icon "$PWD/app_icon.icns" \
+    --osx-bundle-identifier com.jackyphoto.pickupphoto \
+    --paths "$PWD" --workpath "$BUILD_DIR/build" --distpath "$BUILD_DIR/dist" \
+    --specpath "$BUILD_DIR" \
+    --add-data "$PWD/pickupphoto/web/static:pickupphoto/web/static" \
+    --collect-all rawpy --exclude-module dearpygui ${FACE_ARGS[@]+"${FACE_ARGS[@]}"} \
+    "$PWD/pickupphoto/__main__.py"
+
+APP="$BUILD_DIR/dist/PickUpPhoto.app"
+PLIST="$APP/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$PLIST"
+/usr/libexec/PlistBuddy -c "Add :CFBundleVersion string $VERSION" "$PLIST"
+codesign --force --sign - "$APP"
+codesign --verify --deep --strict "$APP"
+lipo -verify_arch arm64 "$APP/Contents/MacOS/PickUpPhoto"
+
+echo "=== 驗證封裝後的 .app 與網頁資源 ==="
+"$PYTHON" scripts/smoke_macos_app.py "$APP"
+
+mkdir "$BUILD_DIR/dmg"
+ditto "$APP" "$BUILD_DIR/dmg/PickUpPhoto.app"
+ln -s /Applications "$BUILD_DIR/dmg/Applications"
+hdiutil create -volname "PickUpPhoto" -srcfolder "$BUILD_DIR/dmg" -format UDZO "$BUILD_DIR/$DMG"
+hdiutil verify "$BUILD_DIR/$DMG"
+mv -f "$BUILD_DIR/$DMG" "$OUTPUT/$DMG"
+(cd "$OUTPUT" && shasum -a 256 "$DMG" > "$DMG.sha256")
+echo "DMG $OUTPUT/$DMG"

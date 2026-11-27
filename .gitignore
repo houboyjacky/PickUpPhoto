@@ -42,7 +42,8 @@ htmlcov/
 .claude/
 .codex/
 .gemini/
-.github/
+.github/*
+!.github/workflows/
 openspec/
 .harness/
 .continuity/
